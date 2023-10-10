@@ -1,0 +1,17 @@
+# 先匡整體要偵測的範圍
+python  step_1_case_layout_paint.py --case_root "./datacase/case1" --mode="polygon"
+
+
+# 再框桌子
+python  step_1_case_layout_paint.py --case_root "./datacase/case1" --mode="table"
+
+
+
+# Test detection - 測試偵測點
+# 決定是否要正確納入 yolo 結果
+python  tmp.py --case_root "./datacase/case1" --mode "polygon"
+
+# 決定桌子點在那些桌子
+python  tmp.py --case_root "./datacase/case1" --mode "table"
+
+

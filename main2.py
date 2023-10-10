@@ -2,8 +2,10 @@ import cv2
 import numpy as np
 from pathlib import Path  # 匯入 Path 類
 from utils import *
+import time
 # 初始化全局變數
 points = []
+user_check_4point_OK = False
 trans_matrix_G = None
 user_lines = []
 drawing_mode_G = 'vertical'
@@ -62,21 +64,19 @@ def redraw_lines(window_name='transform_image_A', line_xy=None):
 
 # 點擊事件的回調函數
 def click_event(event, x, y, flags, param):
-    global points, trans_matrix_G
+    global points, trans_matrix_G, user_check_point_OK, clean_img
 
     if event == cv2.EVENT_LBUTTONDOWN:
-        # 在圖片上畫一個小圓圈來標記點的位置
-
-        cv2.circle(img, (x, y), 2, (0, 0, 255), -1)
-        cv2.imshow('image', img)
-
-        # 將點的座標添加到列表中
+        local_img = clean_img.copy()
+        if len(points) >= 4:
+            points = points[0:3]  # remove last one
         points.append((x, y))
 
-        # 當收集到四個點時，進行透視變換並保存結果
-        if len(points) == 4:
-            cv2.destroyAllWindows()
-            trans_matrix_G = get_transform_matrix(img, points)
+        # 在圖片上畫一個小圓圈來標記點的位置
+        for point in points:
+            cv2.circle(local_img, point, 2, (0, 0, 255), -1)
+        cv2.imshow('image', local_img)
+
 
 # 執行透視變換
 def transform_image(img, trans_matrix, exceed=1.5):
@@ -121,6 +121,14 @@ def get_transform_matrix(img, points):
 
 if __name__ == "__main__":
     global img, clean_img
+    # =============================================
+    develop_pre_input = True
+    if develop_pre_input:
+        points = [(65, 139), (592, 315), (764, 463), (117, 371)]
+        user_check_4point_OK = True
+    # =============================================
+
+
     # 載入圖片
     #img_path = Path('./images/test1.png')  # 輸入圖片的路徑
     img_path = Path('./images/zj_lab/4.jpg')  # 輸入圖片的路徑
@@ -131,25 +139,84 @@ if __name__ == "__main__":
     # 顯示圖片並設置點擊事件的回調函數
     cv2.imshow('image', img)
     cv2.setMouseCallback('image', click_event)
-    print("順時針 或者 逆時針 精準按下桌子的四個角落。")
-    # 等待用戶按下任意鍵來退出
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    print("順時針 或者 逆時針 按下桌子的四個角落。(w,a,s,d 可以微調當前點的位置。)")
+    print("當畫面上有四個點都確定OK沒問題，按下空白 並下一步。")
+    # =============================================
+    # 以下的 while 就是讓使用者點桌子的四個角落而已
+    # =============================================
+    while True:
+        if len(points) == 4 and user_check_4point_OK:
+            break
+        key = cv2.waitKey(0)
+        move_direction = None
+        if key == ord('w') or key == ord('W'):
+            move_direction = 'up'
+        elif key == ord('s') or key == ord('S'):
+            move_direction = 'down'
+        elif key == ord('a') or key == ord('A'):
+            move_direction = 'left'
+        elif key == ord('d') or key == ord('D'):
+            move_direction = 'right'
+        # space
+        elif key == ord(' ') and len(points) == 4:
+            user_check_4point_OK = True
 
+        if move_direction and len(points) > 0:
+            x, y = points[-1]
+            if move_direction == 'up':
+                points[-1] = (x, y-1)
+            elif move_direction == 'down':
+                points[-1] = (x, y+1)
+            elif move_direction == 'left':
+                points[-1] = (x-1, y)
+            elif move_direction == 'right':
+                points[-1] = (x+1, y)
+
+            cv2.destroyAllWindows()
+            # repaint points
+            img = clean_img.copy()
+            for point in points:
+                cv2.circle(img, point, 2, (0, 0, 255), -1)
+            cv2.imshow('image', img)
+            cv2.setMouseCallback('image', click_event)
+
+    cv2.destroyAllWindows()
+    for point in points:
+        cv2.circle(img, point, 2, (0, 0, 255), -1)
+    # 繪製封閉多邊形用
+    pts = np.array(points, dtype=np.int32)
+    cv2.polylines(img, [pts], isClosed=True, color=(0, 255, 0), thickness=2)
+    print("points: ", points)
+    cv2.imshow('image 4 points are good!', img)
+    cv2.waitKey(0)
+    #  使用者已經調整完畢桌子的四個角落
+    #  =============================================
+    #
+    # 當收集到四個點時，進行透視變換並保存結果
+    if len(points) == 4:
+        cv2.destroyAllWindows()
+        trans_matrix_G = get_transform_matrix(img, points)
+        print("trans_matrix_G is: ", trans_matrix_G)
+    else:
+        raise Exception("len(points) != 4, it is {}".format(len(points)))
+    # =============================================
+    # 接下來使用 由使用者繪製 桌面方框
+    # =============================================
     transfer_result = None
     if trans_matrix_G is not None:
         print(trans_matrix_G)
         # 定義要向左上移動的偏移量
-        dx = int(w*0.2)  # 向左移動 50 像素
-        dy = int(h*0.2)  # 向上移動 50 像素
+        dx = int(w*0)  # 向左移動 50 像素
+        dy = int(h*0)  # 向上移動 50 像素
 
         # 修改矩陣中的平移部分以實現左上移動
         trans_matrix_G[0, 2] += dx
         trans_matrix_G[1, 2] += dy
         print("\n\n\n\n\n=======================")
-        print("按下空白 並下一步。")
         transfer_result, new_w_h = transform_image(clean_img, trans_matrix_G)
-
+        print("transfer_result (w, h): ", transfer_result.shape[1::-1])
+        print("new_w_h (w, h): ", new_w_h)
+        print("按下空白 並下一步。")
     else:
         print("trans_matrix_G is None, exit program.")
 
@@ -162,7 +229,7 @@ if __name__ == "__main__":
     print("2. 按下 X 退出，並儲存此反校正後的圖片。")
     print("3. 按下 Z undo 上一條繪製的線。")
     while True:
-        key = cv2.waitKey(10)
+        key = cv2.waitKey(0)
 
         if key == ord('x') or key == ord('X'):  # 按下x鍵退出
             break
@@ -171,11 +238,33 @@ if __name__ == "__main__":
                 good_points.pop()
                 trans_img = transfer_result.copy() # reset trans_img one!
                 redraw_lines(line_xy=good_points)
-
     cv2.destroyAllWindows()
+    #
+    ## 定義待轉換的點, good_points 是校正桌面上的十字點中心
+    src_points = np.array([good_points], dtype=np.float32)
+    # int
+    new_src_points = []
+    for xy in src_points[0]:
+        _x, _y = xy
+        new_src_points.append([int(_x), int(_y)])
+    print("src_points (x,y):", new_src_points)
+
+    # debug: print src_points on clean_img
+    debug_img = clean_img.copy()
+    for xy in new_src_points:
+        cv2.circle(debug_img, tuple(xy), 2, (0, 0, 255), -1)
+    cv2.imshow('debug_img', debug_img)
+    cv2.waitKey(0)
+    #
 
     # 執行逆變換
     inverse_matrix = np.linalg.inv(trans_matrix_G)
+
+    ## 使用逆透視變換
+    dst_points = cv2.perspectiveTransform(src_points, inverse_matrix)
+    print("dst_points (x,y):", dst_points)
+    #
+
     if transfer_result is not None:
         repainted_image = cv2.warpPerspective(trans_img, inverse_matrix, new_w_h, borderValue=(255, 255, 255))
         # 使用 Path 來設定保存圖像的路徑
