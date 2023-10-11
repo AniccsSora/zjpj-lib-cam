@@ -40,6 +40,34 @@ point = (0.3, 0.3)
 result = point_in_polygon(point, polygon)
 print(result)  # 输出 True 表示点在多边形内部
 
+def load_table_N_to_data_struct(table_N_path: Path, verbose=False) -> list:
+    """
+    load table_N.pic to data struct
+    :param table_N_path: Path
+    :return: list
+    """
+    # 打開.txt文件以讀取模式
+    with open(f'{table_N_path}', 'rb') as file:
+        loaded_data = pickle.load(file)
+    # 載入的數據
+    if verbose:
+        print("Loaded Data:", np.array(loaded_data))
+    return loaded_data
+
+def load_polygon_to_data_struct(polygon_path: Path, verbose=False) -> list:
+    """
+    load polygon.pic to data struct
+    :param polygon_path: Path
+    :return: list
+    """
+    # 打開.txt文件以讀取模式
+    with open(f'{polygon_path}', 'rb') as file:
+        loaded_data = pickle.load(file)
+    # 載入的數據
+    if verbose:
+        print("Loaded Data:", np.array(loaded_data))
+    return loaded_data
+
 """
 command:
     # param
@@ -55,7 +83,7 @@ command:
     #
         python  tmp.py --case_root "./datacase/case1" --mode "table" --verbose 
 """
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description="My Script")
     # folder path
     parser.add_argument("--case_root", type=str, help="cam folder root path")
@@ -82,7 +110,7 @@ if __name__ == "__main__":
         loaded_data = pickle.load(file)
 
 
-    # 打印載入的數據
+    # debug
     if args.verbose:
         print("Loaded Data:", np.array(loaded_data))
 
@@ -119,7 +147,6 @@ if __name__ == "__main__":
         if 1:
             for polygon in loaded_data:
                 polygons.append(np.array(polygon, dtype=np.int32))
-            print("A")
         else:
             polygons = [
                 np.array(loaded_data[0], dtype=np.int32),
@@ -161,5 +188,34 @@ if __name__ == "__main__":
     # draw green points
     for xy in is_green_points:
         cv2.circle(image, (int(xy[0] * w), int(xy[1] * h)), 2, green, -1)
+    cv2.imshow('Image', image)
+    cv2.waitKey(0)
+
+if __name__ == "__main__":
+    #main()
+
+    tables = load_table_N_to_data_struct(Path("./datacase/case1/table_N.pic"))
+    polygon = load_polygon_to_data_struct(Path("./datacase/case1/polygon.pic"))
+    print(f"tables (len={len(tables)}): ", tables)
+    print(f"polygon (len={len(polygon)}): ", polygon)
+
+    # use above data struct to test point in polygon
+    w, h = 800, 600
+
+    # draw polygon on image
+    image = np.zeros((h, w, 3), np.uint8)
+    # convert normal coordinate to image coordinate,
+    converted_polygon = [ (int(x*w), int(y*h))for x,y in polygon]
+    #
+    converted_tables = []
+    for table in tables:
+        converted_table = [(int(x*w), int(y*h))for x,y in table]
+        converted_tables.append(converted_table)
+    # 框出 table
+    for table in converted_tables:
+        cv2.polylines(image, [np.array(table, dtype=np.int32)], True, (0, 255, 0), 2)
+
+    # 框出偵測部位多邊形
+    cv2.polylines(image, [np.array(converted_polygon, dtype=np.int32)], True, (0, 255, 255), 2)
     cv2.imshow('Image', image)
     cv2.waitKey(0)
