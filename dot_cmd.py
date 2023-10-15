@@ -8,7 +8,9 @@ import os
 import pickle
 from ultralytics import YOLO
 import warnings
+
 warnings.filterwarnings("ignore")
+
 
 def point_in_polygon(point_xy: tuple[float, float], polygon_list: np.ndarray) -> bool:
     """
@@ -50,6 +52,7 @@ def load_table_N_to_data_struct(table_N_path: Path, verbose=False) -> list:
         print("Loaded Data:", np.array(loaded_data))
     return loaded_data
 
+
 def load_polygon_to_data_struct(polygon_path: Path, verbose=False) -> list:
     """
     load polygon.pic to data struct
@@ -64,22 +67,23 @@ def load_polygon_to_data_struct(polygon_path: Path, verbose=False) -> list:
         print("Loaded Data:", np.array(loaded_data))
     return loaded_data
 
+
 """
 command:
     # param
         <case_root>: 根目錄路徑名稱
         <verbose> : 
         <polygon_pic> : polygon.pic, default
-        
+
     #
-    
+
     python  tmp.py --case_root "C:\\cgit\\zjpj-lib-cam\\datacase\\case1" --verbose
     # 主範圍測試
-        python  tmp.py --case_root "./datacase/case1" --mode "polygon" --verbose
+        python  dot_cmd.py --case_root "./datacase/case1" --mode "polygon" --verbose
     #
-        python  tmp.py --case_root "./datacase/case1" --mode "table" --verbose 
+        python  dot_cmd.py --case_root "./datacase/case1" --mode "table" --verbose 
 """
-def command_main():
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="My Script")
     # folder path
     parser.add_argument("--case_root", type=str, help="cam folder root path")
@@ -101,10 +105,9 @@ def command_main():
         pic_load_name = case_root.joinpath(args.table_pic)
     elif args.mode == 'polygon':
         pic_load_name = case_root.joinpath(args.polygon_pic)
-    # 打開.pic文件以讀取模式
+    # 打開.txt文件以讀取模式
     with open(f'{pic_load_name}', 'rb') as file:
         loaded_data = pickle.load(file)
-
 
     # debug
     if args.verbose:
@@ -170,13 +173,13 @@ def command_main():
 
     is_green_points = []
     is_red_points = []
-    for loaded_data_norm in loaded_data_norms: # 走訪 polygon
+    for loaded_data_norm in loaded_data_norms:  # 走訪 polygon
         for xy in random_norm_xy_list:  # 走訪點
             # decided point by norm-coordinate system
             if point_in_polygon(xy, loaded_data_norm):
                 is_green_points.append(xy)
             else:
-                #cv2.circle(image, (int(xy[0] * w), int(xy[1] * h)), 2, red, -1)
+                # cv2.circle(image, (int(xy[0] * w), int(xy[1] * h)), 2, red, -1)
                 is_red_points.append(xy)
     # draw red points
     for xy in is_red_points:
@@ -186,116 +189,3 @@ def command_main():
         cv2.circle(image, (int(xy[0] * w), int(xy[1] * h)), 2, green, -1)
     cv2.imshow('Image', image)
     cv2.waitKey(0)
-
-def test_load_pickle_and_show_polygon_range():
-    tables = load_table_N_to_data_struct(Path("./datacase/case1/table_N.pic"))
-    polygon = load_polygon_to_data_struct(Path("./datacase/case1/polygon.pic"))
-    print(f"tables (len={len(tables)}): ", tables)
-    print(f"polygon (len={len(polygon)}): ", polygon)
-
-    # use above data struct to test point in polygon
-    w, h = 800, 600
-
-    # draw polygon on image
-    image = np.zeros((h, w, 3), np.uint8)
-    # convert normal coordinate to image coordinate,
-    converted_polygon = [(int(x * w), int(y * h)) for x, y in polygon]
-    #
-    converted_tables = []
-    for table in tables:
-        converted_table = [(int(x * w), int(y * h)) for x, y in table]
-        converted_tables.append(converted_table)
-    # 框出 table
-    for table in converted_tables:
-        cv2.polylines(image, [np.array(table, dtype=np.int32)], True, (0, 255, 0), 2)
-
-    # 框出偵測部位多邊形
-    cv2.polylines(image, [np.array(converted_polygon, dtype=np.int32)], True, (0, 255, 255), 2)
-    cv2.imshow('Image', image)
-    cv2.waitKey(0)
-
-def test_yolo():
-    model = YOLO('yolov8n.pt')  # pretrained YOLOv8n model
-    #
-    image_root = Path(r"./datacase/case1/images")
-    assert image_root.exists(), f"image_root not exists \"{image_root}\""
-    image_list = list(image_root.glob("*.*"))
-    # Run batched inference on a list of images
-    image_list = [str(image_path) for image_path in image_list]
-    results = model(image_list)
-
-    for idx, result in enumerate(results):  # iterate results
-        #
-        img = result.orig_img
-        # 此張圖片的所有偵測 bbox
-        boxes = result.boxes.cpu().numpy()  # get boxes on cpu in numpy
-        # 這個是字典注意， key 應該是 bbox 的 index
-        #labels = result.names  # get labels
-        # cla [N, 1], 每個框框的類別
-        labels = [int(_) for _ in result.boxes.cls.detach().cpu()]
-        # conf [N, 1], 每個框框的 confidence
-        confs = result.boxes.conf.detach().cpu()
-
-        for idx, box in enumerate(boxes):  # iterate boxes
-            r = box.xyxy[0].astype(int)  # get corner points as int
-            print(r)  # print boxes
-
-            # text
-            label_idx = labels[idx]
-            # 繪製圖示
-            ttext = f"{result.names[label_idx]} {confs[idx]:.2f}"
-            print(ttext)
-            font_scale = 2
-            cv2.putText(img, ttext, r[:2], cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), 2)
-
-            #
-            cv2.rectangle(img, r[:2], r[2:], (0, 0, 255), 2)  # draw boxes on img
-        cv2.imshow(f"aaa {idx}", resize_image_with_max_resolution(img, 800))
-    cv2.waitKey(0)
-    print("bbbb")
-    # return a list of Results objects
-
-def load_pic_dot_chair():
-    """
-    load pickle 的資料，並 denormalization 後，畫在圖片上~
-    :return:
-    """
-    chair_list = []
-    # load pickle
-    with open(f'./datacase/case1/table_N_chair.pic', 'rb') as file:
-        chair_list = pickle.load(file)
-    # 載入的數據
-    print(chair_list)
-
-    # load image
-    image_root = Path(r"./datacase/case1/images")
-    assert image_root.exists(), f"image_root not exists \"{image_root}\""
-    image = list(image_root.glob("*.*"))[0]
-    image = cv2.imread(str(image))
-    image = resize_image_with_max_resolution(image, 800)
-
-    w, h = image.shape[1::-1]
-
-    de_normalize_chair_list = []
-    # de-normalize
-    for chairs in chair_list:
-        de_normalize_chair_list.append([(int(x * w), int(y * h)) for x, y in chairs])
-
-
-    # draw chair point on image
-    for chairs in de_normalize_chair_list:
-        for chair in chairs:
-            cv2.circle(image, chair, 2, (0, 0, 255), -1)
-    # show image
-    cv2.imshow('Image', image)
-    cv2.waitKey(0)
-
-
-
-
-if __name__ == "__main__":
-    #command_main()
-    #test_load_pickle_and_show_polygon_range()
-    test_yolo()
-    #load_pic_dot_chair()
-
