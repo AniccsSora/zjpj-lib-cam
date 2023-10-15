@@ -64,6 +64,43 @@ def load_polygon_to_data_struct(polygon_path: Path, verbose=False) -> list:
         print("Loaded Data:", np.array(loaded_data))
     return loaded_data
 
+
+def load_pic_dot_chair():
+    """
+    load pickle 的資料，並 denormalization 後，畫在圖片上~
+    :return:
+    """
+    chair_list = []
+    # load pickle
+    with open(f'./datacase/case1/table_N_chair.pic', 'rb') as file:
+        chair_list = pickle.load(file)
+    # 載入的數據
+    print(chair_list)
+
+    # load image
+    image_root = Path(r"./datacase/case1/images")
+    assert image_root.exists(), f"image_root not exists \"{image_root}\""
+    image = list(image_root.glob("*.*"))[0]
+    image = cv2.imread(str(image))
+    image = resize_image_with_max_resolution(image, 800)
+
+    w, h = image.shape[1::-1]
+
+    de_normalize_chair_list = []
+    # de-normalize
+    for chairs in chair_list:
+        de_normalize_chair_list.append([(int(x * w), int(y * h)) for x, y in chairs])
+
+
+    # draw chair point on image
+    for chairs in de_normalize_chair_list:
+        for chair in chairs:
+            cv2.circle(image, chair, 2, (0, 0, 255), -1)
+    # show image
+    cv2.imshow('Image', image)
+    cv2.waitKey(0)
+
+
 """
 command:
     # param
@@ -84,7 +121,7 @@ def command_main():
     # folder path
     parser.add_argument("--case_root", type=str, help="cam folder root path")
     parser.add_argument("--verbose", action="store_true", help="show debug message")
-    parser.add_argument("--mode", choices=['table', 'polygon'], type=str, help="choose mode")
+    parser.add_argument("--mode", choices=['table', 'polygon', 'chair'], type=str, help="choose mode")
     parser.add_argument("--polygon_pic", default="polygon.pic", type=str, help="polygon txt path")
     parser.add_argument("--table_pic", default="table_N.pic", type=str, help="polygon txt path")
     parser.add_argument("--image_folder_name", default="images", type=str, help="image folder name")
@@ -101,6 +138,10 @@ def command_main():
         pic_load_name = case_root.joinpath(args.table_pic)
     elif args.mode == 'polygon':
         pic_load_name = case_root.joinpath(args.polygon_pic)
+    elif args.mode == 'chair':
+        print("this mode current is hard code mode!!")
+        load_pic_dot_chair()  # current is hard code
+        return
     # 打開.pic文件以讀取模式
     with open(f'{pic_load_name}', 'rb') as file:
         loaded_data = pickle.load(file)
@@ -255,47 +296,14 @@ def test_yolo():
     print("bbbb")
     # return a list of Results objects
 
-def load_pic_dot_chair():
-    """
-    load pickle 的資料，並 denormalization 後，畫在圖片上~
-    :return:
-    """
-    chair_list = []
-    # load pickle
-    with open(f'./datacase/case1/table_N_chair.pic', 'rb') as file:
-        chair_list = pickle.load(file)
-    # 載入的數據
-    print(chair_list)
 
-    # load image
-    image_root = Path(r"./datacase/case1/images")
-    assert image_root.exists(), f"image_root not exists \"{image_root}\""
-    image = list(image_root.glob("*.*"))[0]
-    image = cv2.imread(str(image))
-    image = resize_image_with_max_resolution(image, 800)
-
-    w, h = image.shape[1::-1]
-
-    de_normalize_chair_list = []
-    # de-normalize
-    for chairs in chair_list:
-        de_normalize_chair_list.append([(int(x * w), int(y * h)) for x, y in chairs])
-
-
-    # draw chair point on image
-    for chairs in de_normalize_chair_list:
-        for chair in chairs:
-            cv2.circle(image, chair, 2, (0, 0, 255), -1)
-    # show image
-    cv2.imshow('Image', image)
-    cv2.waitKey(0)
 
 
 
 
 if __name__ == "__main__":
-    #command_main()
+    command_main()
     #test_load_pickle_and_show_polygon_range()
-    test_yolo()
+    #test_yolo()
     #load_pic_dot_chair()
 

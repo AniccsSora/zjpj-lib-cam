@@ -14,4 +14,7 @@ python  tmp.py --case_root "./datacase/case1" --mode "polygon"
 # 決定桌子點在那些桌子
 python  tmp.py --case_root "./datacase/case1" --mode "table"
 
+# show chair on image
+python  tmp.py --case_root "./datacase/case1" --mode "chair"
+
 
