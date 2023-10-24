@@ -236,12 +236,15 @@ command:
     # 主偵測範圍設定
     #python  step_1_case_layout_paint.py --case_root "C:\\cgit\\zjpj-lib-cam\\datacase\\case1" --mode='polygon'
     python  step_1_case_layout_paint.py --case_root "./datacase/case1" --mode="polygon" --verbose
+    python  step_1_case_layout_paint.py --case_root "./datacase/case2" --mode="polygon" --image_folder_name="B1F_south" --verbose
     
     # table 範圍偵測設定
     python  step_1_case_layout_paint.py --case_root "./datacase/case1" --mode="table" --verbose
+    python  step_1_case_layout_paint.py --case_root "./datacase/case2" --mode="table" --image_folder_name="B1F_south" --verbose
     
     # chair 
     python  step_1_case_layout_paint.py --case_root "./datacase/case1" --mode="chair" --verbose
+    python  step_1_case_layout_paint.py --case_root "./datacase/case2" --mode="chair" --image_folder_name="B1F_south"
 # 執行結果
     會在 <--case_root> 下長出 polygon.txt 和 valid_detection_range.jpg
 """

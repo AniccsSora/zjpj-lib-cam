@@ -531,6 +531,7 @@ class Secne_Table_chair:
 """
     讀取 3 個生成出的 pic 檔案，並將其轉換成我自己的類別。
     python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --verbose
+    python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case2"  --image_folder_name "B1F_south"
     
     # 建議使用這個 command 先確認，預先繪製的區塊是正確的顯示在圖片上
     # 顯示預先定義的資料: 使用測試測資
