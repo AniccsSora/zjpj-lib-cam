@@ -397,6 +397,16 @@ class Secne_Table_chair:
                 chair_y = int(chair_yn * h)
                 cv2.circle(frame, (chair_x, chair_y), 5, (0, 255, 0), -1)
 
+    def draw_table_idx_on_frame(self, frame):
+        w, h = frame.shape[1::-1]
+        for table_idx in range(self.table_numbers()):
+            self.table_points[table_idx]
+            center_t_x, center_t_y = calculate_polygon_center(self.table_points[table_idx])
+            if 0:
+                # shift left font start position
+                center_t_x = center_t_x - w*0.05
+            cv2.putText(frame, f"t: {table_idx}", (int(center_t_x*w), int(center_t_y*h)), cv2.FONT_ITALIC,
+                        1.5, (255, 0, 0), 2, cv2.LINE_AA)
     def yolo_watch(self, frame, imshow_window_name="sufu", debug_show=False, debug_resize=0):
         """
         用檢測某個畫面，並填充此 class 的資料
@@ -536,6 +546,7 @@ class Secne_Table_chair:
     # 建議使用這個 command 先確認，預先繪製的區塊是正確的顯示在圖片上
     # 顯示預先定義的資料: 使用測試測資
     python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --check_preAnchor
+    python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case2"  --image_folder_name "B1F_south" --check_preAnchor
     
     # 在 {random_pick_test_image} 隨機找 data detection。
     python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --random_pick_test_image --image_folder_name "2F_North"
@@ -621,6 +632,10 @@ if __name__ == "__main__":
                         __dot_eval_x, __dot_eval_y = clean_frame.shape[1::-1]
                         __min_dot_size = int (min(__dot_eval_x, __dot_eval_y) * 0.01)
                         cv2.circle(clean_frame, _norm_pos_xy, __min_dot_size, _rand_color, -1)  # 實心
+        #
+        # 繪製桌子編號
+        scene_1.draw_table_idx_on_frame(clean_frame)
+        #
         cv2.imshow("Person dot detection Debug, same table person have same dot Color",
                   resize_image_with_max_resolution(clean_frame, 800))
         cv2.waitKey(1000)

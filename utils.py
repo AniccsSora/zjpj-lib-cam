@@ -4,6 +4,44 @@ import numpy as np
 from pathlib import Path
 
 
+def calculate_polygon_center(points):
+    if len(points) < 3:
+        raise ValueError("多邊形至少需要3個點")
+
+    # 檢查每個點的值域是否在 0 <= x <= 1
+    for x, y in points:
+        if not (0 <= x <= 1) or not (0 <= y <= 1):
+            raise ValueError("點的值域必須在 0 到 1 之間")
+
+    # 初始化中心座標的總和
+    total_x, total_y = 0, 0
+
+    # 獲得多邊形的邊數
+    num_points = len(points)
+
+    # 計算多邊形的面積
+    area = 0
+    for i in range(num_points):
+        x1, y1 = points[i]
+        x2, y2 = points[(i + 1) % num_points]
+        area += (x1 * y2 - x2 * y1)
+
+    area *= 0.5
+
+    # 計算多邊形的中心座標
+    for i in range(num_points):
+        x1, y1 = points[i]
+        x2, y2 = points[(i + 1) % num_points]
+        factor = x1 * y2 - x2 * y1
+        total_x += (x1 + x2) * factor
+        total_y += (y1 + y2) * factor
+
+    total_x /= (6 * area)
+    total_y /= (6 * area)
+
+    return total_x, total_y
+
+
 def point_in_polygon(point_xy: tuple[float, float], polygon_list: np.ndarray) -> bool:
     """
     判斷點是否在多邊形內，使用 0~1 座標系
