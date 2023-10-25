@@ -405,8 +405,8 @@ class Secne_Table_chair:
             if 0:
                 # shift left font start position
                 center_t_x = center_t_x - w*0.05
-            cv2.putText(frame, f"t: {table_idx}", (int(center_t_x*w), int(center_t_y*h)), cv2.FONT_ITALIC,
-                        1.5, (255, 0, 0), 2, cv2.LINE_AA)
+            cv2.putText(frame, f"table: {table_idx+1}", (int(center_t_x*w), int(center_t_y*h)), cv2.FONT_ITALIC,
+                        2.0, (255, 0, 0), 2, cv2.LINE_AA)
     def yolo_watch(self, frame, imshow_window_name="sufu", debug_show=False, debug_resize=0):
         """
         用檢測某個畫面，並填充此 class 的資料
@@ -616,7 +616,7 @@ if __name__ == "__main__":
                 continue
             else:
                 print("桌子 {} : 此桌目前占用 {} 人 / 剩餘座位: {} / 桌子座位總數: {}".
-                      format(table_idx, sum(chair_mask), len(chair_mask) - sum(chair_mask), len(chair_mask)))
+                      format(table_idx+1, sum(chair_mask), len(chair_mask) - sum(chair_mask), len(chair_mask)))
                 # random color
                 _rand_color = (random.randint(127, 255), random.randint(127, 255), random.randint(127, 255))
                 for idx, mask_TF in enumerate(chair_mask):
