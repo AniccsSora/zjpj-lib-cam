@@ -612,7 +612,7 @@ if __name__ == "__main__":
         #
         for table_idx, chair_mask in scene_1.person_in_chair_N.items():
             if sum(chair_mask) == 0:
-                print("桌子", table_idx, "沒有人")
+                print("桌子", table_idx+1, "沒有人")
                 continue
             else:
                 print("桌子 {} : 此桌目前占用 {} 人 / 剩餘座位: {} / 桌子座位總數: {}".
