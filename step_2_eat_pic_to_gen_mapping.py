@@ -12,6 +12,8 @@ warnings.filterwarnings("ignore")
 import math
 import glob
 from typing import List, Tuple
+import time
+from web_fetch_DONT_UPLOAD_GITHUB import lib_camera_generator
 
 def develope_mode():
     return False
@@ -23,6 +25,7 @@ args_G = None
 
 class Secne_Table_chair:
     def __init__(self, case_root):
+        self.args = args_G
         self.polygen_points = None  # polygen_points
         self.table_points = None  # table_points
         self.chair_points = None  # chair_points
@@ -36,7 +39,8 @@ class Secne_Table_chair:
         #
         self.case_root = case_root
         #
-        self.model = YOLO('yolov8x.pt')  # pretrained YOLOv8n model , yolov8l, yolov8x
+        print(f"Use {self.args.yolo_w_name} weight!")
+        self.model = YOLO(self.args.yolo_w_name)  # pretrained YOLOv8n model , yolov8l, yolov8x
         # v8 labels definition
         # person, handbag, cup, laptop, mouse, cell phone, book
         self.used_v8_labels = [0, 26, 41, 63, 64, 67, 73]
@@ -178,7 +182,7 @@ class Secne_Table_chair:
         # 2. table 範圍
         # 3. chair 位置
         # 使用 python step_1_case_layout_paint.py 來生成
-        assert len(pic_list) == 3, f"偵測到 {len(pic_list)} 個 pic 檔案"
+        assert len(pic_list) == 3, f"只偵測到 {len(pic_list)} 支 pic 檔案, 需要 3 支，請使用 step1 程式來生成他們"
 
         #
         _chk_f_list = [_.name for _ in pic_list]
@@ -540,7 +544,13 @@ class Secne_Table_chair:
 
 """
     讀取 3 個生成出的 pic 檔案，並將其轉換成我自己的類別。
+    # 這是使用 test image
     python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --verbose
+    
+    # 這是使用 爬下來的 data, case 1
+    python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1"  --image_folder_name "2F_North"
+    
+    # 這是使用 爬下來的 data, case 2
     python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case2"  --image_folder_name "B1F_south"
     
     # 建議使用這個 command 先確認，預先繪製的區塊是正確的顯示在圖片上
@@ -553,7 +563,21 @@ class Secne_Table_chair:
     
     TODO: this command
     # 偵測整包資料夾的圖片
-    python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --image_folder_name "2F_North" --detect_all_image
+    python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --image_folder_name "2F_North" --detect_all_image 
+    
+    # 用別的 weight
+    python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --image_folder_name "2F_North" --detect_all_image --yolo_w_name="yolov8n.pt"
+    
+    
+    !!! 即時監測 command !!!
+    #
+    #  注意 需要手動檢查 --case_root 內是否已經有區域設定的 pic 檔案。
+    #
+    case1 的 layout 的配置是 '2F閱覽區(北側)' = --camara  --camara_name="2F閱覽區(北側)"
+    
+    command:
+        python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --camara --camara_name="2F閱覽區(北側)"
+    
 """
 
 if __name__ == "__main__":
@@ -568,6 +592,18 @@ if __name__ == "__main__":
     parser.add_argument("--verbose", action="store_true", help="show debug message")
     parser.add_argument("--random_pick_test_image", action="store_true", help="random pick test image")
     parser.add_argument("--detect_all_image", action="store_true", help="detect all image in {image_folder_name}")
+    parser.add_argument("--yolo_w_name", default="yolov8x.pt", type=str, help="Used yolo weight fileaname.",
+                        choices=[
+                            'yolov8n.pt', 'yolov8s.pt', 'yolov8m.pt', 'yolov8l.pt', 'yolov8x.pt',
+                        ]
+                        )
+    # use real-time camera
+    parser.add_argument("--camara", action="store_true", help="Use real carama to fetch image.")
+    parser.add_argument("--camara_name", default="", type=str, help="camara",
+                        choices=['2F閱覽區(北側)','2F閱覽區 (南側)',
+                                 '2F閱覽區(西南側)','B1F閱覽區(北側)',
+                                 'B1F閱覽區(南側)','B1F閱覽區(西側)']
+                        )
     # parser.add_argument("--mode", choices=['table', 'polygon', 'chair'], type=str, help="choose mode")
     # 解析命令行參數
     args = parser.parse_args()
@@ -596,9 +632,43 @@ if __name__ == "__main__":
     #test_frame = resize_image_with_max_resolution(cv2.imread(iii), 1000)
     #for _frame in image_root.glob("*.*"):
     #for _frame in [iii, iii, iii]:
-    for _frame in [_.__str__() for _ in image_root.glob("*.*")][1:200]:
-        pass
-        test_frame = cv2.imread(_frame)
+
+    # 使用圖片路徑
+    # [_.__str__() for _ in image_root.glob("*.*")][1:200]
+
+    # use cv2.ndarray
+    # A_A = [cv2.imread(_) for _ in[iii, iii, iii]]
+
+    _fecth_method = None
+    if args.camara:
+        # use generator
+        _fecth_method = lib_camera_generator(args.camara_name, sleep_t=0.2)
+    else:
+        # just usr list of str
+        _fecth_method = [_.__str__() for _ in image_root.glob("*.*")]
+    assert _fecth_method is not None
+
+    for _frame in _fecth_method:
+        test_frame = None
+        ret_code = None
+        # check class
+        if isinstance(_frame, str):
+            test_frame = cv2.imread(_frame)
+        elif isinstance(_frame, np.ndarray):
+            test_frame = _frame
+        elif isinstance(_frame, tuple):
+            assert len(_frame) == 2  # assert format = (image, status_code)
+            test_frame, ret_code = _frame
+        else:
+            raise ValueError(f"unknow type??: {type(_frame)}")
+        #
+        #
+        if ret_code is not None:
+            if ret_code != 0:  # 0 mean OK!
+                print("camera read error! wait 5 sec to continue...")
+                time.sleep(5)
+                continue
+
         clean_frame = test_frame.copy()
         # 檢測此 frame 並填充此 class 的資料
         scene_1.yolo_watch(test_frame, debug_show=False, debug_resize=800)  # dddddddddddddddd
