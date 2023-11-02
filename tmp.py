@@ -8,6 +8,7 @@ import os
 import pickle
 from ultralytics import YOLO
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # def point_in_polygon(point_xy: tuple[float, float], polygon_list: np.ndarray) -> bool:
@@ -116,6 +117,8 @@ command:
     #
         python  tmp.py --case_root "./datacase/case1" --mode "table" --verbose 
 """
+
+
 def command_main():
     parser = argparse.ArgumentParser(description="My Script")
     # folder path
@@ -145,7 +148,6 @@ def command_main():
     # 打開.pic文件以讀取模式
     with open(f'{pic_load_name}', 'rb') as file:
         loaded_data = pickle.load(file)
-
 
     # debug
     if args.verbose:
@@ -211,13 +213,13 @@ def command_main():
 
     is_green_points = []
     is_red_points = []
-    for loaded_data_norm in loaded_data_norms: # 走訪 polygon
+    for loaded_data_norm in loaded_data_norms:  # 走訪 polygon
         for xy in random_norm_xy_list:  # 走訪點
             # decided point by norm-coordinate system
             if point_in_polygon(xy, loaded_data_norm):
                 is_green_points.append(xy)
             else:
-                #cv2.circle(image, (int(xy[0] * w), int(xy[1] * h)), 2, red, -1)
+                # cv2.circle(image, (int(xy[0] * w), int(xy[1] * h)), 2, red, -1)
                 is_red_points.append(xy)
     # draw red points
     for xy in is_red_points:
@@ -227,6 +229,7 @@ def command_main():
         cv2.circle(image, (int(xy[0] * w), int(xy[1] * h)), 2, green, -1)
     cv2.imshow('Image', image)
     cv2.waitKey(0)
+
 
 def test_load_pickle_and_show_polygon_range():
     tables = load_table_N_to_data_struct(Path("./datacase/case1/table_N.pic"))
@@ -255,8 +258,9 @@ def test_load_pickle_and_show_polygon_range():
     cv2.imshow('Image', image)
     cv2.waitKey(0)
 
+
 def test_yolo():
-    model = YOLO('yolov8n.pt')  # pretrained YOLOv8n model
+    model = YOLO('yolov8x.pt')  # pretrained YOLOv8n model
     #
     image_root = Path(r"./datacase/case1/images")
     assert image_root.exists(), f"image_root not exists \"{image_root}\""
@@ -271,7 +275,7 @@ def test_yolo():
         # 此張圖片的所有偵測 bbox
         boxes = result.boxes.cpu().numpy()  # get boxes on cpu in numpy
         # 這個是字典注意， key 應該是 bbox 的 index
-        #labels = result.names  # get labels
+        # labels = result.names  # get labels
         # cla [N, 1], 每個框框的類別
         labels = [int(_) for _ in result.boxes.cls.detach().cpu()]
         # conf [N, 1], 每個框框的 confidence
@@ -297,9 +301,140 @@ def test_yolo():
     # return a list of Results objects
 
 
-if __name__ == "__main__":
-    #command_main()
-    # test_load_pickle_and_show_polygon_range()
-    test_yolo()
-    #load_pic_dot_chair()
+def perspect_transform_test():
+    # 創建一個800x600的灰色底圖像
+    width, height = 800 , 600
+    background = np.ones((height, width, 3), dtype=np.uint8) * 150  # 灰色背景
 
+    # 定義平行四邊形的四個點（以比例為單位）
+    parallelogram_norm = np.array(
+        [[0.25, 0.16666667],
+         [0.75, 0.16666667],
+         [0.875, 0.6666667],
+         [0.375, 0.6666667]
+         ], dtype=np.float32)
+
+    # 繪製平行四邊形
+    cv2.polylines(background, [normalize_2_pixel(parallelogram_norm, width, height)], isClosed=True, color=(0, 0, 255),
+                  thickness=2)  # 紅色邊
+
+    num_points = 20
+    # 在圖像上隨機生成點的座標並繪製
+    for _ in range(num_points):
+        x = random.randint(0, width - 1)
+        y = random.randint(0, height - 1)
+        color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))  # 隨機顏色
+        cv2.circle(background, (x, y), 2, color, -1)  # 繪製點
+
+    # 保存圖像為文件
+    # cv2.imwrite('parallel_quadrilateral.png', background)
+
+    # 顯示圖像（可選）
+    cv2.imshow('Image1', background)
+    # ==========================================
+
+    output_size = [1000, 1000]  # [width, height]
+    #
+    # 計算透視變換矩陣
+    #
+    dst_points = np.array(
+        [[0.25, 0.25],
+         [0.75, 0.25],
+         [0.75, 0.75],
+         [0.25, 0.75],
+         ],
+        dtype=np.float32
+    )
+    dst_points = normalize_2_pixel(dst_points, width, height)
+    # move right and bottom a little bits
+    #
+    # !!! Key point !!!
+    #
+    #dst_points[:, 0] += 200
+    #dst_points[:, 1] += 200
+    #
+    while True:
+        # 推算額外位移用
+        x_exceed = 0.0
+        y_exceed = 0.0
+        #
+        src_points = normalize_2_pixel(parallelogram_norm, width, height)
+        M = cv2.getPerspectiveTransform(src_points.astype(np.float32), dst_points.astype(np.float32))
+
+        # 原始圖像中的四個邊角點
+        _4_corners_in_raw = np.array(
+            [
+                [0, 0],
+                [width - 1, 0],
+                [width - 1, height - 1],
+                [0, height - 1],
+            ]
+        , dtype=np.float32)
+
+        mapping_corners = np.zeros_like(_4_corners_in_raw)
+        for i, x_y in enumerate(_4_corners_in_raw):
+            x, y = x_y
+            mapping_corners[i] = np.dot(M, np.array([x, y, 1]))[:2]
+            print("mapping = ", round(mapping_corners[i][0]), round(mapping_corners[i][1]))
+
+        # 檢查有否 會超出去 投影區域的點
+        extra_edge = 10  # 限制投影區域內縮一圈
+        # 檢查
+        for x, y in mapping_corners:
+            if x < 0+extra_edge :  # 左邊超出，位移投射最終點
+                x_exceed = abs(x-extra_edge)
+                dst_points[:, 0] += round(x_exceed)
+            if x > output_size[0]-extra_edge:  # 右邊超出，加長畫布 output_size[0]
+                x_exceed = abs(x-(output_size[0]-extra_edge))
+                output_size[0] += round(x_exceed)
+            if y < 0+extra_edge:  # 上面超出，位移投射最終點
+                y_exceed = abs(y-extra_edge)
+                dst_points[:, 1] += round(y_exceed)
+            if y > output_size[1]-extra_edge:  # 下面超出，加長畫布 output_size[1]
+                y_exceed = abs(y-(output_size[1]-extra_edge))
+                output_size[1] += round(y_exceed)
+
+        x_exceed, y_exceed = round(x_exceed), round(y_exceed)
+        if x_exceed > 0:
+            print(f"    需要額外位移目標投影 x_exceed = {x_exceed}")
+        if y_exceed > 0:
+            print(f"    需要額外位移目標投影 y_exceed = {y_exceed}")
+
+        if x_exceed > 0 or y_exceed > 0:
+            continue
+
+        print("final good output_size = ", output_size)
+
+        # 逆運算
+        print("\n逆運算:")
+        inv_M = np.linalg.inv(M)
+        # 嘗試 用 逆運算的矩陣 回算回原始的點
+        for i, x_y in enumerate(mapping_corners):
+            x, y = x_y
+            _x, _y = np.dot(inv_M, np.array([x, y, 1]))[:2]
+            print("remapping = ", round(_x), round(_y))
+            print("   origin = ", round(_4_corners_in_raw[i][0]), round(_4_corners_in_raw[i][1]))
+        # 驗證 OK! 沒問題
+
+
+        output = cv2.warpPerspective(background, M, output_size)
+
+        # 繪製 mapping_corners 在仿射的圖圖片上
+        for x, y in mapping_corners:
+            cv2.circle(output, (int(x), int(y)), 2, (0, 255, 0), -1)
+
+        break
+    # this while-do end
+
+    cv2.imshow("output", output)
+    cv2.waitKey(300000)
+    cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    # command_main()
+    # test_load_pickle_and_show_polygon_range()
+    # load_pic_dot_chair()
+    # test_yolo()
+
+    perspect_transform_test()

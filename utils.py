@@ -160,3 +160,53 @@ def resize_image_with_max_resolution(image, max_resolution):
     resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
 
     return resized_image
+
+
+def pixel_2_normalize(coordinates: np.ndarray, width, height):
+    """
+    將座標從像素座標轉換為 0~1 的座標系
+    :param coordinates:  ndarray, shape (n, 2)
+    :param width:
+    :param height:
+    :return:
+    """
+    if not isinstance(coordinates, np.ndarray) or coordinates.shape[1] != 2:
+        raise ValueError("coordinates shape must like (n, 2)! n is points number.")
+    x_norm, y_norm = coordinates[:, 0].copy(), coordinates[:, 1].copy()
+
+    pixel_coordinates = None
+    if coordinates.dtype == np.int32:
+        x_pixel = (x_norm.astype(np.float32) / width)
+        y_pixel = (y_norm.astype(np.float32) / height)
+        pixel_coordinates = np.column_stack((x_pixel, y_pixel))
+    else:
+        raise ValueError(f"Unhandle type:{coordinates.dtype}, "
+                         f"This is for [pixel (int)] -> [norm (float)],\nbut your input data is: \n{coordinates[:2]}...")
+
+    if pixel_coordinates is None:
+        raise ValueError("pixel_coordinates is None")
+    return pixel_coordinates
+
+def normalize_2_pixel(coordinates: np.ndarray, width, height):
+    """
+    將座標從 0~1 的座標系轉換為像素座標
+    :param coordinates:  ndarray, shape (n, 2)
+    :param width:
+    :param height:
+    :return:
+    """
+    if not isinstance(coordinates, np.ndarray) or coordinates.shape[1] != 2:
+        raise ValueError("coordinates shape must like (n, 2)! n is points number.")
+    x_norm, y_norm = coordinates[:, 0].copy(), coordinates[:, 1].copy()
+    pixel_coordinates = None
+    if (coordinates.dtype == np.float32) or \
+            (coordinates.dtype == np.float64):
+        x_pixel = (x_norm * width).astype(np.int32)
+        y_pixel = (y_norm * height).astype(np.int32)
+        pixel_coordinates = np.column_stack((x_pixel, y_pixel))
+    else:
+        raise ValueError(f"Unhandle type:{coordinates.dtype}, "
+                         f"This is for [norm (float)] -> [pixel (int)],\nbut your input data is: \n{coordinates[:2]}...")
+    if pixel_coordinates is None:
+        raise ValueError("pixel_coordinates is None")
+    return pixel_coordinates
