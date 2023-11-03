@@ -244,3 +244,38 @@ def equally_divided_line_segments(point1: np.ndarray, point2: np.ndarray,
                                           np.array([p2], dtype=np.int32)],
                                          axis=0)
     return dividing_points
+
+def divided_square_and_cals_slice_linesPair(square:np.ndarray, number:int):
+    """
+    :param square: 預期至少四邊形即可~
+    :param number: 要接成幾個座位，因為是接桌子，故要用 2 的倍數
+    :return:
+    """
+    assert number % 2 == 0
+    assert square.shape[0] == 4  # 預期是四邊型
+    # 長邊要切幾刀
+    long_side_cut = (number//2) - 1
+    # 短邊要切幾刀
+    short_side_cut = 1
+
+    # 兩個長邊
+    long_side1 = equally_divided_line_segments(square[0], square[1], long_side_cut+1, include_endp=False)
+    long_side2 = equally_divided_line_segments(square[2], square[3], long_side_cut+1, include_endp=False)
+    long_side2 = long_side2[::-1]  # 反轉
+    # 兩個短邊
+    short_side1 = equally_divided_line_segments(square[1], square[2], short_side_cut+1, include_endp=False)
+    short_side2 = equally_divided_line_segments(square[3], square[0], short_side_cut+1, include_endp=False)
+    short_side2 = short_side2[::-1]  # 反轉
+    # 合併
+    #  #長邊點組
+    merge_long_side_P_pair = [i for i in zip(long_side1, long_side2)]
+    #  # 短邊點組
+    merge_short_side_P_pair = [i for i in zip(short_side1, short_side2)]
+
+    res = merge_long_side_P_pair + merge_short_side_P_pair
+    if long_side_cut+short_side_cut != len(res):
+        raise ValueError("長邊切的刀數({}) + 短邊切的刀數({}) != 總回傳線段數{}".format(
+            long_side_cut, short_side_cut, len(res)
+        ))
+    return res
+

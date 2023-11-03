@@ -301,9 +301,37 @@ def test_yolo():
     # return a list of Results objects
 
 
+def line_avg_segnment_lab():
+    # 創建一個帶有白色背景的空白影像
+    height, width = 500, 500
+    image = np.ones((height, width, 3), dtype=np.uint8) * 255
+
+    # 生成兩個隨機點
+    point1 = (random.randint(0, width), random.randint(0, height))
+    point2 = (random.randint(0, width), random.randint(0, height))
+
+    divided_points = equally_divided_line_segments(point1, point2, 5, False)
+
+    # 在影像上繪製點
+    cv2.circle(image, point1, 5, (0, 0, 255), -1)
+    cv2.circle(image, point2, 5, (0, 0, 255), -1)
+    # 把端點會繪製上去
+    for point in divided_points:
+        print("draw divid points = ", point)
+        cv2.circle(image, point, 5, (255, 0, 0), -1)
+
+    # 繪製連接兩點的直線
+    cv2.line(image, point1, point2, (255, 0, 0), 2)
+
+    # 顯示帶有隨機點和直線的影像
+    cv2.imshow('帶有隨機點和直線的影像', image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
 def perspect_transform_test():
     # 創建一個800x600的灰色底圖像
-    width, height = 800 , 600
+    width, height = 800, 600
     background = np.ones((height, width, 3), dtype=np.uint8) * 150  # 灰色背景
 
     # 定義平行四邊形的四個點（以比例為單位）
@@ -314,8 +342,10 @@ def perspect_transform_test():
          [0.375, 0.6666667]
          ], dtype=np.float32)
 
+    parallelogram_pixel = normalize_2_pixel(parallelogram_norm, width, height)
+
     # 繪製平行四邊形
-    cv2.polylines(background, [normalize_2_pixel(parallelogram_norm, width, height)], isClosed=True, color=(0, 0, 255),
+    cv2.polylines(background, [parallelogram_pixel], isClosed=True, color=(0, 0, 255),
                   thickness=2)  # 紅色邊
 
     num_points = 20
@@ -333,7 +363,7 @@ def perspect_transform_test():
     cv2.imshow('Image1', background)
     # ==========================================
 
-    output_size = [1000, 1000]  # [width, height]
+    output_size = [200, 200]  # [width, height]
     #
     # 計算透視變換矩陣
     #
@@ -353,6 +383,11 @@ def perspect_transform_test():
     #dst_points[:, 0] += 200
     #dst_points[:, 1] += 200
     #
+    M = None
+    inv_M = None
+
+    # 調整投應過後的圖形，讓他整個出現在畫面中的方法，
+    # 其實就是找到投過去後的 原圖的四個角是否在畫面內即可。
     while True:
         # 推算額外位移用
         x_exceed = 0.0
@@ -371,6 +406,7 @@ def perspect_transform_test():
             ]
         , dtype=np.float32)
 
+        # 計算投射後的點
         mapping_corners = np.zeros_like(_4_corners_in_raw)
         for i, x_y in enumerate(_4_corners_in_raw):
             x, y = x_y
@@ -421,20 +457,68 @@ def perspect_transform_test():
 
         # 繪製 mapping_corners 在仿射的圖圖片上
         for x, y in mapping_corners:
-            cv2.circle(output, (int(x), int(y)), 2, (0, 255, 0), -1)
+            cv2.circle(output, (int(x), int(y)), 6, (255, 255, 0), -1)
 
         break
     # this while-do end
 
+    assert M is not None, "M is None"
+    assert inv_M is not None, "inv_M is None"
+
+    # 原圖的點?
+    print("原圖的點:", parallelogram_pixel)
+    # 繪製在 image1 上
+    for xy in parallelogram_pixel:
+        x, y = xy
+        cv2.circle(background, (x, y), 6, (255, 154, 0), -1)
+    # ============================================================
+    # 校正過後的點
+    print("校正過後的點:", end="")
+    mapped_parallelogram_pixel = np.zeros_like(parallelogram_pixel)
+    for i, xy in enumerate(parallelogram_pixel):
+        x, y = xy
+        _x, _y = np.dot(M, np.array([x, y, 1]))[:2]
+        print(round(_x), round(_y))
+        mapped_parallelogram_pixel[i] = np.array([_x, _y], dtype=np.int32)
+    # 繪製在 output 上
+    for xy in mapped_parallelogram_pixel:
+        x, y = xy
+        cv2.circle(output, (x, y), 6, (34, 255, 0), -1)
+    #
+    # 把四邊切分
+    point_set = divided_square_and_cals_slice_linesPair(mapped_parallelogram_pixel, 8)
+    # ============================================================
+    for p1, p2 in point_set:
+        cv2.line(output, p1, p2, (255, 0, 0), 2)
+    # ============================================================
+
+    # 把線段們 inverse mapping
+    inv_segment_set = []
+    for p1, p2 in point_set:
+        _p1 = np.dot(inv_M, np.array([p1[0], p1[1], 1]))[:2]
+        _p2 = np.dot(inv_M, np.array([p2[0], p2[1], 1]))[:2]
+        inv_segment_set.append([_p1, _p2])
+    # 繪製 inverse mapping 後的線段們
+    for p1, p2 in inv_segment_set:
+        p1 = p1.astype(np.int32).tolist()
+        p2 = p2.astype(np.int32).tolist()
+        cv2.line(background, p1, p2, (0, 255, 255), 2)
+    # ============================================================
+
+    # 獲致
+    cv2.imshow("Image1", background)
     cv2.imshow("output", output)
     cv2.waitKey(300000)
     cv2.destroyAllWindows()
-
 
 if __name__ == "__main__":
     # command_main()
     # test_load_pickle_and_show_polygon_range()
     # load_pic_dot_chair()
     # test_yolo()
+    # 給予一的線段，印出他的平分點
+    #line_avg_segnment_lab()
 
     perspect_transform_test()
+
+    pass
