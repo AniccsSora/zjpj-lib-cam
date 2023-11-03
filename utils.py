@@ -210,3 +210,37 @@ def normalize_2_pixel(coordinates: np.ndarray, width, height):
     if pixel_coordinates is None:
         raise ValueError("pixel_coordinates is None")
     return pixel_coordinates
+
+def equally_divided_line_segments(point1: np.ndarray, point2: np.ndarray,
+                                  num_segments: int, include_endp=True) -> np.ndarray:
+    """
+    給我兩的點，告訴我切幾段，回傳中間的點座標
+    :param point1:
+    :param point2:
+    :param num_segments: 切幾段
+    :param include_endp: 是否也回傳端點
+    :return:
+    """
+    # load points as np.ndarray
+    p1, p2 = np.array(point1, dtype=np.float64), np.array(point2, dtype=np.float64)
+    N = num_segments  # 切幾段
+    #===============================
+    # check they just a points
+    assert p1.ndim == 1 and p2.ndim == 1, f"p1.ndim = {p1.ndim}, p2.ndim = {p2.ndim}"
+    # check size
+    assert p1.size == 2 and p2.size == 2, f"p1.size = {p1.size}, p2.size = {p2.size}"
+
+    line_vector = p2 - p1
+
+    dividing_points = np.array([p1 + (i / N) * line_vector for i in range(1, N)])
+
+    # round then
+    dividing_points = np.round(dividing_points).astype(np.int32)
+
+    #
+    if include_endp:
+        dividing_points = np.concatenate([np.array([p1], dtype=np.int32),
+                                          dividing_points,
+                                          np.array([p2], dtype=np.int32)],
+                                         axis=0)
+    return dividing_points
