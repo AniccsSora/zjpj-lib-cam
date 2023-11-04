@@ -342,9 +342,9 @@ def perspect_transform_test(parallelogram_norm=None, real_imgae=None, sits_numbe
         #  定義平行四邊形的四個點（以比例為單位）
         parallelogram_norm = np.array(
             [[0.25, 0.16666667],
-             [0.75, 0.16666667],
-             [0.875, 0.6666667],
-             [0.375, 0.6666667]
+             [0.75, 0.16666667+0.13],  # +0.13  y
+             [0.875, 0.6666667+0.13],  # +0.13  y
+             [0.375-0.2, 0.6666667],  #   x
              ], dtype=np.float64)  # 32
     # RE-order that
     parallelogram_norm = sort_poins_is_clockwise_and_leftTop_mostClose_leftTop(parallelogram_norm)
@@ -468,11 +468,18 @@ def perspect_transform_test(parallelogram_norm=None, real_imgae=None, sits_numbe
         mapping_corners_norm = np.zeros_like(_4_corners_in_raw_norm, dtype=np.float64)
         for i, x_y in enumerate(_4_corners_in_raw.astype(np.float64)):
             x, y = x_y
-            mapping_corners[i] = np.dot(M, np.array([x, y, 1.0], dtype=np.float64))[:2]
+            # mapping_corners[i] = np.matmul(np.array([x, y, 1.0], dtype=np.float64), M)[:2]
+            # mapping_corners[i] = np.dot(M, np.array([x, y, 1.0], dtype=np.float64))[:2]  # 錯的
+            _x, _y, w = M.dot(np.array([x, y, 1.0], dtype=np.float64))
+            mapping_corners[i] = np.array([_x, _y]) / w
+
             print("int  mapping = ", mapping_corners[i][0], mapping_corners[i][1])
         for i, x_y in enumerate(_4_corners_in_raw_norm):
             x, y = x_y
-            mapping_corners_norm[i] = np.dot(M_norm, np.array([x, y, 1.0], dtype=np.float64))[:2]
+            #mapping_corners_norm[i] = np.matmul(np.array([x, y, 1.0],  dtype=np.float64), M_norm)[:2]
+            # mapping_corners_norm[i] = np.dot(M_norm, np.array([x, y, 1.0], dtype=np.float64))[:2]  # 錯的
+            _x, _y, w = M_norm.dot(np.array([x, y, 1.0], dtype=np.float64))
+            mapping_corners_norm[i] = np.array([_x, _y]) / w
             print("norm mapping = ", mapping_corners_norm[i][0], mapping_corners_norm[i][1])
         # 檢查有否 會超出去 投影區域的點
         #extra_edge = 10  # 限制投影區域內縮一圈
@@ -541,7 +548,11 @@ def perspect_transform_test(parallelogram_norm=None, real_imgae=None, sits_numbe
         # 嘗試 用 逆運算的矩陣 回算回原始的點
         for i, x_y in enumerate(mapping_corners):
             x, y = x_y
-            _x, _y = np.dot(inv_M, np.array([x, y, 1], dtype=np.float64))[:2]
+            # _x, _y = np.dot(inv_M, np.array([x, y, 1], dtype=np.float64))[:2]  # 錯的
+            #_x, _y = np.matmul(np.array([x, y, 1.0], dtype=np.float64), inv_M)[:2]
+            _x, _y, w = inv_M.dot(np.array([x, y, 1.0], dtype=np.float64))
+            _x /= w
+            _y /= w
             print("[int] remapping = {:-8.5f}   {:-8.5f}".format(round(_x), round(_y)))
             print("[int]    origin = {:-8.5f}   {:-8.5f}".format(round(_4_corners_in_raw[i][0]), round(_4_corners_in_raw[i][1])))
             print("=====================================================")
@@ -550,7 +561,11 @@ def perspect_transform_test(parallelogram_norm=None, real_imgae=None, sits_numbe
         # norm version
         for i, x_y in enumerate(mapping_corners_norm):
             x, y = x_y
-            _x, _y = np.dot(inv_M_norm, np.array([x, y, 1], dtype=np.float64))[:2]
+            # _x, _y = np.dot(inv_M_norm, np.array([x, y, 1], dtype=np.float64))[:2]  # 錯的
+            #_x, _y = np.matmul(np.array([x, y, 1.0], dtype=np.float64), inv_M_norm)[:2]
+            _x, _y, w = inv_M_norm.dot(np.array([x, y, 1.0], dtype=np.float64))
+            _x /= w
+            _y /= w
             print("[norm] remapping = {:-8.5f}   {:-8.5f}".format(_x, _y))
             print("[norm]    origin = {:-8.5f}   {:-8.5f}".format(_4_corners_in_raw_norm[i][0], _4_corners_in_raw_norm[i][1]))
             print("=====================================================")
@@ -583,7 +598,11 @@ def perspect_transform_test(parallelogram_norm=None, real_imgae=None, sits_numbe
     mapped_parallelogram_pixel = np.zeros_like(parallelogram_pixel)
     for i, xy in enumerate(parallelogram_pixel):
         x, y = xy
-        _x, _y = np.dot(M, np.array([x, y, 1]))[:2]
+        # _x, _y = np.dot(M, np.array([x, y, 1]))[:2]  # 錯的
+        #_x, _y = np.matmul(np.array([x, y, 1.0], dtype=np.float64), M)[:2]  # 錯的2號
+        _x, _y, w = M.dot(np.array([x, y, 1.0], dtype=np.float64))
+        _x /= w
+        _y /= w
         print(round(_x), round(_y))
         mapped_parallelogram_pixel[i] = np.array([_x, _y], dtype=np.int32)
     # 繪製在 output 上
@@ -608,8 +627,17 @@ def perspect_transform_test(parallelogram_norm=None, real_imgae=None, sits_numbe
     # 把線段們 inverse mapping
     inv_segment_set = []
     for p1, p2 in point_set:
-        _p1 = np.dot(inv_M, np.array([p1[0], p1[1], 1]))[:2]
-        _p2 = np.dot(inv_M, np.array([p2[0], p2[1], 1]))[:2]
+        #_p1 = np.dot(inv_M, np.array([p1[0], p1[1], 1]))[:2]  # 錯的
+        #_p2 = np.dot(inv_M, np.array([p2[0], p2[1], 1]))[:2]  # 錯的
+        # _p1 = np.matmul(np.array([p1[0], p1[1], 1.0], dtype=np.float64), inv_M)[:2]
+        # _p2 = np.matmul(np.array([p2[0], p2[1], 1.0], dtype=np.float64), inv_M)[:2]
+        _x1, _y1, w1 = inv_M.dot(np.array([p1[0], p1[1], 1.0], dtype=np.float64))
+        _x2, _y2, w2 = inv_M.dot(np.array([p2[0], p2[1], 1.0], dtype=np.float64))
+        _x1, _y1 = _x1 / w1, _y1 / w1
+        _x2, _y2 = _x2 / w2, _y2 / w2
+        #
+        _p1 = np.array([_x1, _y1])
+        _p2 = np.array([_x2, _y2])
         inv_segment_set.append([_p1, _p2])
     # 繪製 inverse mapping 後的線段們
     for p1, p2 in inv_segment_set:
@@ -659,7 +687,12 @@ def perspect_transform_test(parallelogram_norm=None, real_imgae=None, sits_numbe
     # 把計算好的座位 印回去原本的圖形上
     for i, xy in enumerate(sit_norm_mapped):
         x, y = xy
-        _origin_x_nrom, _origin_y_nrom = np.dot(inv_M_norm, np.array([x, y, 1]))[:2]
+        #_origin_x_nrom, _origin_y_nrom = np.dot(inv_M_norm, np.array([x, y, 1]))[:2]  # 錯的
+        #_origin_x_nrom, _origin_y_nrom = np.matmul(np.array([x, y, 1.0], dtype=np.float64), inv_M_norm)[:2]
+        _origin_x_nrom, _origin_y_nrom, w = inv_M_norm.dot(np.array([x, y, 1.0], dtype=np.float64))
+        _origin_x_nrom /= w
+        _origin_y_nrom /= w
+        #
         re_mapping_pixel_x = _origin_x_nrom * width
         re_mapping_pixel_y = _origin_y_nrom * height
         cv2.circle(background, (int(re_mapping_pixel_x), int(re_mapping_pixel_y)), 3, (123, 111, 12), -1)
@@ -670,7 +703,12 @@ def perspect_transform_test(parallelogram_norm=None, real_imgae=None, sits_numbe
     print("\n繪製回去的點 座標  (桌子):")
     for i, xy in enumerate(table_norm_mapped):
         x, y = xy
-        _origin_x_nrom, _origin_y_nrom = np.dot(inv_M_norm, np.array([x, y, 1]))[:2]
+        # _origin_x_nrom, _origin_y_nrom = np.dot(inv_M_norm, np.array([x, y, 1]))[:2]  # 錯的
+        #_origin_x_nrom, _origin_y_nrom = np.matmul(np.array([x, y, 1.0], dtype=np.float64), inv_M_norm)[:2]
+        _origin_x_nrom, _origin_y_nrom, w = inv_M_norm.dot(np.array([x, y, 1.0], dtype=np.float64))
+        _origin_x_nrom /= w
+        _origin_y_nrom /= w
+        #
         re_mapping_pixel_x = _origin_x_nrom * width
         re_mapping_pixel_y = _origin_y_nrom * height
         cv2.circle(background, (int(re_mapping_pixel_x), int(re_mapping_pixel_y)), 3, (255, 111, 255), -1)
@@ -699,12 +737,12 @@ if __name__ == "__main__":
     # 給予一的線段，印出他的平分點
     #line_avg_segnment_lab()
     #
-    _use_ideal_debug = 1
+    _use_ideal_debug = 0
     if _use_ideal_debug:
         perspect_transform_test()  # ideal test case
     else:
         real_image = cv2.imread(r"C:\cgit\zjpj-lib-cam\datacase\case1\2F_North\2023-10-23-193851.jpg")
-        # real_image = resize_image_with_max_resolution(real_image, 100)
+        real_image = resize_image_with_max_resolution(real_image, 800)
         parallelogram_norm = load_table_N_to_data_struct(Path("./datacase/case1/table_N.pic"))[0]
         perspect_transform_test(parallelogram_norm=parallelogram_norm, real_imgae=real_image, sits_number=8)
 
