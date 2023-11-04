@@ -195,14 +195,17 @@ def normalize_2_pixel(coordinates: np.ndarray, width, height):
     :param height:
     :return:
     """
+    if isinstance(coordinates, list):
+        coordinates = np.array(coordinates, dtype=np.float64)
+
     if not isinstance(coordinates, np.ndarray) or coordinates.shape[1] != 2:
         raise ValueError("coordinates shape must like (n, 2)! n is points number.")
     x_norm, y_norm = coordinates[:, 0].copy(), coordinates[:, 1].copy()
     pixel_coordinates = None
     if (coordinates.dtype == np.float32) or \
             (coordinates.dtype == np.float64):
-        x_pixel = (x_norm * width).astype(np.int32)
-        y_pixel = (y_norm * height).astype(np.int32)
+        x_pixel = (x_norm * width).astype(np.int64)
+        y_pixel = (y_norm * height).astype(np.int64)
         pixel_coordinates = np.column_stack((x_pixel, y_pixel))
     else:
         raise ValueError(f"Unhandle type:{coordinates.dtype}, "
@@ -278,4 +281,161 @@ def divided_square_and_cals_slice_linesPair(square:np.ndarray, number:int):
             long_side_cut, short_side_cut, len(res)
         ))
     return res
+
+
+def calc_parallelogram_location_points(parallelogram:np.ndarray, sit_number:int, assert_check = True)->np.ndarray:
+    """
+    回傳，所有棋盤方格 "點位"(包括座位區，定位點，桌子(角落點, 棋盤點))
+    :param parallelogram:
+    :param sit_number: 整個桌面要有幾個座位
+    :return: {"sit_points": [np.ndarray ...],
+              "table_points": [np.ndarray ...]
+            }
+    """
+
+    assert parallelogram.shape[0] == 4  # 預期是四邊型
+    assert sit_number % 2 == 0 and sit_number >= 2
+    assert parallelogram.dtype == np.float32 or parallelogram.dtype == np.float64  # 請傳入正歸化座標
+
+    # 檢查 邊1, 與邊2 是否垂直?
+    vector_a = np.array(parallelogram[1] - parallelogram[0])  # 替換 a1, a2, a3 為實際的數值
+    vector_b = np.array(parallelogram[-1] - parallelogram[0])
+    # 計算點積
+    dot_product = np.dot(vector_a, vector_b)
+    if assert_check:
+        assert np.isclose(dot_product, 0, atol=0.001), "兩向量不垂直，無法計算,內積為:{}".format(dot_product)
+    # ===================== pre-checker END =====================
+    # horizon vector
+    x_vector = vector_a
+    if assert_check:
+        assert np.isclose(x_vector[1], 0, atol=0.01), "水平向量 具有 y 分量, x_vector = {}".format(x_vector)
+    # vertical vector
+    y_vector = vector_b
+    if assert_check:
+        assert np.isclose(y_vector[0], 0, atol=0.01), "垂直向量 具有 x 分量, y_vector = {}".format(y_vector)
+
+    # 水平位置一個座位的方向向量
+    x_sit_unit_vector = x_vector.astype(np.float64) / (sit_number // 2)
+
+    # 垂直位置一個座位的方向向量
+    y_sit_unit_vector = y_vector.astype(np.float64) / 2
+
+    # 檢測 單位向量 位移 數次後，可以走到 另一個桌子角落。
+    # 左上原點 -> 右上角落
+    lt = parallelogram[0]
+    rt = parallelogram[1]
+    _x_delta = x_sit_unit_vector * (sit_number//2)
+    if assert_check:
+        assert np.isclose(np.linalg.norm(lt + _x_delta - rt), 0), \
+            "左上四邊形原點:{}，加上 x 方向向量，走 {} 步，無法到達右上角落:{}".\
+            format(lt, sit_number//2, rt)
+    # 左上原點 -> 左下角落
+    # lt = parallelogram[0]
+    lb = parallelogram[3]
+    _y_delta = y_sit_unit_vector * 2   # 垂直永遠是 2 個單位，因為只切一刀
+    if assert_check:
+        assert np.isclose(np.linalg.norm(lt + _y_delta - lb), 0), \
+            "左上四邊形原點:{}，加上 y 方向向量，走 {} 步，無法到達左下角落:{}".\
+            format(lb, 2, lb)
+
+    # build return dataform
+    result_dict = {
+        'sit_points': [],
+        'table_points': [],
+    }
+
+    # 左上的座位點，位移
+    sit_lf = lt - y_sit_unit_vector
+    for i in range((sit_number//2)+1):
+        result_dict['sit_points'].append(sit_lf + (x_sit_unit_vector*i))
+    # 左上方座位點位移 N 的位置後會抵達，右上角落- y_sit_unit_vector 位置
+    if assert_check:
+        assert np.isclose(np.linalg.norm(result_dict['sit_points'][-1] + y_sit_unit_vector - rt), 0), \
+            "  左上方座位點位移 N 的位置後會抵達，右上角落- y_sit_unit_vector 位置\n" \
+            "  椅子右上方 = result_dict['sit_points'][-1]:{}\n" \
+            "  桌子右上角落 = rt:{}\n" \
+            "  y 單位向量(1分隔向量)\n".format(result_dict['sit_points'][-1], rt, y_sit_unit_vector)
+    # 上排驗證完畢，直接走4個 y 位移量即可抵達下排座位
+    bottom_sits = np.array(result_dict['sit_points']) + (y_sit_unit_vector * 4)
+    result_dict['sit_points'] += list(bottom_sits)
+
+
+    # 座位計算完畢，來整個桌子點
+    for i in range((sit_number // 2) + 1):
+        result_dict['table_points'].append(lt + (x_sit_unit_vector * i))
+    # 下面兩排也算出來，整排位移 y_sit_unit_vector ，兩遍的點 + 近來
+    _topper_table_points = np.array(result_dict['table_points'])
+    for i in range(1, 2+1):
+        _shift_table_points = _topper_table_points + (y_sit_unit_vector * i)
+        result_dict['table_points'] += list(_shift_table_points)
+    #
+    _debug = 0
+    if _debug:
+        # debug section
+        # 印出點位用來 debug
+        # 建立一個 800, 600 空畫布
+        debug_image = np.zeros((600, 800, 3), np.uint8)
+        # 畫出四邊形
+        for i in range(4):
+            cv2.line(debug_image, tuple(parallelogram[i]), tuple(parallelogram[(i+1)%4]), (0, 255, 0), 1)
+        # 畫出點位 [table_points]
+        for i in range(len(result_dict['table_points'])):
+            cv2.circle(debug_image, tuple(result_dict['table_points'][i].astype(np.int32)),
+                       2, (255, 255, 0), -1)
+        #
+        # 繪製座位點
+        for i in range(len(result_dict['sit_points'])):
+            cv2.circle(debug_image, tuple(result_dict['sit_points'][i].astype(np.int32)),
+                       2, (255, 0, 255), -1)
+        cv2.imshow("debug_image", debug_image)
+        cv2.waitKey(0)
+        # debug section
+    # ===================== debug section End=====================
+    # 椅子
+    assert len(result_dict['sit_points']) == ((sit_number//2)+1) * 2
+    # 桌子
+    assert len(result_dict['table_points']) == ((sit_number//2)+1) * 3
+    # 檢查計算完畢的點位數量是對的。
+
+    return result_dict
+
+
+def sort_poins_is_clockwise_and_leftTop_mostClose_leftTop(points:np.ndarray):
+    """
+    檢查傳入的點排序是順時針，且最靠近左上角的點是第一個
+    """
+    if isinstance(points, list):
+        points = np.array(points)
+
+    assert isinstance(points, np.ndarray)
+    original_dtype = points.dtype
+
+    # 計算每個點到原點的歐幾里得距離
+    distances = np.sqrt((points[:, 0] - 0) ** 2 + (points[:, 1] - 0) ** 2)
+
+    # 找到最靠近原點的點的索引
+    starting_index = np.argmin(distances)
+
+    # 重新排列點的順序，使得最靠近原點的點是第一個
+    points = np.roll(points, -starting_index, axis=0)
+
+    # 計算相對於起始點的極角
+    angles = np.arctan2(points[:, 1] - points[0, 1], points[:, 0] - points[0, 0])
+
+    # 對角度進行排序（由於y往下遞增，angles本身就是順時針排序）
+    sorted_indices = np.argsort(angles)
+
+    # 排序點，使其順序是順時針方向
+    sorted_points = points[sorted_indices]
+
+    # 平行四邊形不能用這種方式確認
+    # assert np.linalg.norm(points[0] - points[1]) > np.linalg.norm(points[0] - points[-1]), \
+    # "順時針的第一個向量，大於 逆時針的第一個向量" \
+    # "np.linalg.norm(points[0] - points[1]):{}\n" \
+    # "np.linalg.norm(points[0] - points[-1]):{}\n" \
+    # .format(np.linalg.norm(points[0] - points[1]), np.linalg.norm(points[0] - points[-1]))
+
+
+    return sorted_points.astype(original_dtype)
+
 
