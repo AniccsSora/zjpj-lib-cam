@@ -3,7 +3,7 @@ import pickle
 import numpy as np
 from pathlib import Path
 import random
-
+import copy
 def calculate_polygon_center(points):
     if len(points) < 3:
         raise ValueError("多邊形至少需要3個點")
@@ -628,31 +628,16 @@ def make_sit_table_binding_to_field_binding(loc_points: dict, field_debug_show=F
 
 
 def draw_binding_list_on_image(image: np.array,
-                               inv_M: np.ndarray,
                                bindlist: list,
-                               color_whole_sit_table=(255, 255, 255),
-                               color_table=(0, 255, 0),
-                                color_sit=(255, 0, 0), verbose=False):
+                               color_whole_sit_table=(255, 255, 255), whole_thickness=8,
+                               color_table=(0, 255, 0), table_thickness=2,
+                                color_sit=(255, 0, 0), sit_thickness=2, verbose=False):
     """
     把 dict 形式的 binding list 繪製到 image 上。
 
     1. 繪製整個 座位+椅子  範圍
     2. 椅子 範圍
     3. 桌子 範圍
-    :param image:
-    :param inv_M:
-    :param bindlist:  正歸化的 field binding  [
-                                                [ {"整個": [] ,
-                                                   "椅子": [] ,
-                                                   "桌子": [] }
-                                                ]  # 一個 field binding
-                                            ]
-    # 以下顏色 與 印 Debug 用
-    :param color_whole_sit_table:
-    :param color_table:
-    :param color_sit:
-    :param verbose:
-    :return:
     """
     # ============================================================
     # # draw each field on  field_output
@@ -666,67 +651,68 @@ def draw_binding_list_on_image(image: np.array,
         #
         _debug_w, _debug_h = field_output.shape[1], field_output.shape[0]
         # 繪製桌子
-        mapped_table = np.array(field['whole_sit_region'])
+        table_field = np.array(field['whole_sit_region'])
         # de-normalize
-        mapped_table[:, 0] *= _debug_w
-        mapped_table[:, 1] *= _debug_h
-        # inverse mapping
-        inverse_mapped_table = np.zeros_like(mapped_table)
-        for i, xy in enumerate(mapped_table):
-            x, y = xy
-            _x, _y, w = inv_M.dot(np.array([x, y, 1.0], dtype=np.float64))
-            _x /= w
-            _y /= w
-            inverse_mapped_table[i] = np.array([_x, _y])
+        table_field[:, 0] *= _debug_w
+        table_field[:, 1] *= _debug_h
+
         # 把 backmapping 的 pixel 點投射回去原圖。
-        cv2.polylines(field_output, [inverse_mapped_table.astype(np.int32)], isClosed=True, color=color_whole_sit_table,
-                      thickness=6)
+        cv2.polylines(field_output, [table_field.astype(np.int32)], isClosed=True, color=color_whole_sit_table,
+                      thickness=whole_thickness)
         #
         if verbose:
             print("   位置 {} 的 整個桌子座標 Done!".format(idx + 1))
         # ============================================================
         # ============================================================
         # 繪製椅子
-        mapped_sits = np.array(field['sit_field_region'])
+        sits_field = np.array(field['sit_field_region'])
         # de-normalize
-        mapped_sits[:, 0] *= _debug_w
-        mapped_sits[:, 1] *= _debug_h
-        # inverse mapping
-        inverse_mapped_sits = np.zeros_like(mapped_sits)
-        for i, xy in enumerate(mapped_sits):
-            x, y = xy
-            _x, _y, w = inv_M.dot(np.array([x, y, 1.0], dtype=np.float64))
-            _x /= w
-            _y /= w
-            inverse_mapped_sits[i] = np.array([_x, _y])
+        sits_field[:, 0] *= _debug_w
+        sits_field[:, 1] *= _debug_h
+
         # 把 backmapping 的 pixel 點投射回去原圖。
-        cv2.polylines(field_output, [inverse_mapped_sits.astype(np.int32)], isClosed=True, color=color_sit,
-                      thickness=1)
+        cv2.polylines(field_output, [sits_field.astype(np.int32)], isClosed=True, color=color_sit,
+                      thickness=sit_thickness)
         if verbose:
             print("   位置 {} 的 椅子座標 Done!".format(idx + 1))
 
         ##############################################################
         # 繪製桌子
-        mapped_table = np.array(field['table_field_region'])
+        table_field = np.array(field['table_field_region'])
         # de-normalize
-        mapped_table[:, 0] *= _debug_w
-        mapped_table[:, 1] *= _debug_h
-        # inverse mapping
-        inverse_mapped_table = np.zeros_like(mapped_table)
-        for i, xy in enumerate(mapped_table):
-            x, y = xy
-            _x, _y, w = inv_M.dot(np.array([x, y, 1.0], dtype=np.float64))
-            _x /= w
-            _y /= w
-            inverse_mapped_table[i] = np.array([_x, _y])
+        table_field[:, 0] *= _debug_w
+        table_field[:, 1] *= _debug_h
+
         # 把 backmapping 的 pixel 點投射回去原圖。
-        cv2.polylines(field_output, [inverse_mapped_table.astype(np.int32)], isClosed=True, color=color_table,
-                      thickness=1)
+        cv2.polylines(field_output, [table_field.astype(np.int32)], isClosed=True, color=color_table,
+                      thickness=table_thickness)
         if verbose:
             print("   位置 {} 的 桌子座標 Done!".format(idx + 1))
         # ============================================================
             print("座位 {} 的繪製 Done!".format(idx + 1))
     # ============================================================
+
+
+def calc_tramsform_matrix_result(points=np.ndarray, M=np.ndarray, verbose=False):
+    assert isinstance(points, np.ndarray)
+    assert isinstance(M, np.ndarray)
+
+    # ============================================================
+    assert points.shape[1] == 2  # 座標
+    assert M.shape == (3, 3)  # 轉換矩陣
+
+    # ============================================================
+    # 進行轉換
+    result = np.zeros_like(points)
+
+    for i, xy in enumerate(points):
+        x, y = xy
+        _x, _y, w = M.dot(np.array([x, y, 1.0], dtype=np.float64))
+        _x /= w
+        _y /= w
+        result[i] = np.array([_x, _y])
+
+    return result
 
 
 def clac_sit_table_fields_dict(parallelogram_norm=None, real_imgae=None, sits_number=8,
@@ -1008,6 +994,7 @@ def clac_sit_table_fields_dict(parallelogram_norm=None, real_imgae=None, sits_nu
         # 繪製 mapping_corners 在仿射的圖圖片上
         for x, y in mapping_corners:
             cv2.circle(output, (int(x), int(y)), 6, (255, 255, 0), -1)
+            pass
         break
     # this while-do end
 
@@ -1153,6 +1140,7 @@ def clac_sit_table_fields_dict(parallelogram_norm=None, real_imgae=None, sits_nu
         re_mapping_pixel_x = _origin_x_nrom * width
         re_mapping_pixel_y = _origin_y_nrom * height
         if debug_mode:
+            # 繪製座位點
             cv2.circle(background, (int(re_mapping_pixel_x), int(re_mapping_pixel_y)), 3, (255, 111, 255), -1)
             print("   (x={}, y={})".format(int(re_mapping_pixel_x), int(re_mapping_pixel_y)), end=", ")
             if i % 4 == 0 and i != 0:
@@ -1171,6 +1159,7 @@ def clac_sit_table_fields_dict(parallelogram_norm=None, real_imgae=None, sits_nu
         for i in range(len(_for_draw_sit_points)):
             p1 = (_for_draw_sit_points[i] * np.array(output_size)).astype(np.int32)
             p2 = ((_for_draw_sit_points[(i+1) % len(_for_draw_sit_points)]) * np.array(output_size)).astype(np.int32)
+            # 椅子連線
             cv2.line(output, tuple(p1), tuple(p2), (123, 111, 12), 2)
 
     # ============================================================
@@ -1186,9 +1175,29 @@ def clac_sit_table_fields_dict(parallelogram_norm=None, real_imgae=None, sits_nu
     # # draw each field on  field_output
     field_output = clean_background.copy()
 
+    # ============================================================
+    # field_binding 這個是 在 mapping 空間的結果
+    # 複製一個深層副本
+    mapping_back_nrom_field_binding = copy.deepcopy(field_binding)
+
+    # re-mapping normlized points to original norm points
+    for idx in range(len(mapping_back_nrom_field_binding)):
+        # 別名取代
+        _SIT = mapping_back_nrom_field_binding[idx]['sit_field_region'].copy()
+        _TALBE = mapping_back_nrom_field_binding[idx]['table_field_region'].copy()
+        _WHOLE = mapping_back_nrom_field_binding[idx]['whole_sit_region'].copy()
+        #
+        mapping_back_nrom_field_binding[idx]['sit_field_region'] = \
+            calc_tramsform_matrix_result(_SIT, inv_M_norm)
+        mapping_back_nrom_field_binding[idx]['table_field_region'] = \
+            calc_tramsform_matrix_result(_TALBE, inv_M_norm)
+        mapping_back_nrom_field_binding[idx]['whole_sit_region'] = \
+            calc_tramsform_matrix_result(_WHOLE, inv_M_norm)
+    # ============================================================
+
     # 把 binding list 的框框畫出來
     if debug_mode:
-        draw_binding_list_on_image(field_output, inv_M, field_binding)
+        draw_binding_list_on_image(field_output, mapping_back_nrom_field_binding)
 
     if debug_mode:
         cv2.imshow("Image1", background)
@@ -1197,5 +1206,6 @@ def clac_sit_table_fields_dict(parallelogram_norm=None, real_imgae=None, sits_nu
         cv2.waitKey(300000)
         cv2.destroyAllWindows()
 
-    return field_binding, M, inv_M
+    #return field_binding, M, inv_M, mapping_back_nrom_field_binding
+    return mapping_back_nrom_field_binding
 

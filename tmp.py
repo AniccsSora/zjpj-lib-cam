@@ -344,11 +344,17 @@ if __name__ == "__main__":
         real_image = cv2.imread(r"C:\cgit\zjpj-lib-cam\datacase\case1\2F_North\2023-10-23-193851.jpg")
         real_image = resize_image_with_max_resolution(real_image, 800)
         parallelogram_norm = load_table_N_to_data_struct(Path("./datacase/case1/table_N.pic"))[0]
-        bindling, M, inv_M = clac_sit_table_fields_dict(parallelogram_norm=parallelogram_norm,
-                                                       real_imgae=real_image,
-                                                       sits_number=8,
-                                                        debug_mode=False)
-        draw_binding_list_on_image(real_image, inv_M, bindling)
+        # 計算座位的 binding list
+        mapping_back_binding = clac_sit_table_fields_dict(parallelogram_norm=parallelogram_norm,
+                                                          real_imgae=real_image,
+                                                          sits_number=8,
+                                                          debug_mode=True)
+        # 把 binding list 畫在圖片上
+        draw_binding_list_on_image(real_image, mapping_back_binding,
+                                   color_whole_sit_table=(255, 255, 255), whole_thickness=8,
+                                   color_table=(0, 255, 0), table_thickness=2,
+                                   color_sit=(255, 0, 0), sit_thickness=2, verbose=False
+                                   )
         cv2.imshow("real_image", real_image)
         cv2.waitKey(0)
     pass

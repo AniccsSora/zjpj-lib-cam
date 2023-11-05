@@ -199,7 +199,9 @@ class Secne_Table_chair:
         _ = case_root.joinpath(args.table_pic)
         assert case_root.joinpath(args.table_pic).exists()
         self.table_points = load_table_N_to_data_struct(_)
-
+        self.table_sit_binding_norm = [None for _ in range(len(self.table_points))]
+        for i in range(len(self.table_points)):
+            self.table_sit_binding_norm[i] = clac_sit_table_fields_dict(np.array(self.table_points[i]))
         # load 椅子位置
         _ = case_root.joinpath(args.chair_pic)
         assert case_root.joinpath(args.chair_pic).exists()
