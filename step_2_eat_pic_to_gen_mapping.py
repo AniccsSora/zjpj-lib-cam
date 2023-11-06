@@ -424,6 +424,11 @@ class Secne_Table_chair:
         """
         self.yolo_detect(frame)
 
+        # 更新 binding list 訊息，經由 yolo_detect() 結果填充
+        #
+        self.update_yolo_result_into_binding_list()
+
+        # ====================================================================
         # 繪製總偵測區塊在 frame 上
         #  de-normalize, 反正歸化內部的點
         _w, _h = frame.shape[1::-1]
@@ -543,6 +548,82 @@ class Secne_Table_chair:
         #             self.chair_person_binding_list.append(binding_data)
         #         # 覆蓋此桌子的 chair mask~
         #         self.person_in_chair_N[key] = tmp
+
+
+    def __check_xyxy_in_current_yolo_results(self, xyxyn):
+        """
+        檢查哪個 self.current_yolo_results 出現再 xyxyn 中
+        :param xyxyn:
+        :return:  要更新的資訊 dict
+        """
+        res = {'label_name': [], 'xyxyn': [], 'p': [] }
+
+        for _sufu_tuple in self.current_yolo_results:
+            _xyxyn_yolo, _xywh_yolo, _label_name, _p = _sufu_tuple
+            if point_in_polygon(_xywh_yolo[:2], xyxyn):
+                # 這個 yolo 框框在 xyxyn 中
+                res['label_name'].append(_label_name)
+                res['xyxyn'].append(_xyxyn_yolo)
+                res['p'].append(_p)
+        return res
+
+
+    def update_yolo_result_into_binding_list(self):
+        # 桌子結果數量相等必須
+        assert len(self.table_sit_binding_norm) == len(self.person_in_table_N)
+        """
+        self.table_sit_binding_norm[桌子編號][座位號]
+        """
+        def _New_field_dict_init():
+            """ 要附加的額外資訊 dict init Data Unit """
+            return {"in_sit_field_region_Objects": [],   # 存入名稱用
+                    "in_sit_field_region_Objects_xyxyn": [],  # bbox 位置
+                    "in_sit_field_region_Objects_p": [],  # 精準度用
+                    # ---
+                    "in_table_field_region_Objects": [],
+                    "in_table_field_region_Objects_xyxyn": [],
+                    "in_table_field_region_Objects_p": [],
+                    # ---
+                    "in_chair_field_region_Objects": [],
+                    "in_chair_field_region_Objects_xyxyn": [],
+                    "in_chair_field_region_Objects_p": [],
+                    }
+        # ============================
+        for t_idx in range(len(self.table_sit_binding_norm)):
+            for sit_idx in range(len(self.table_sit_binding_norm[t_idx])):
+                # dict
+                self.table_sit_binding_norm[t_idx][sit_idx]
+                _current_binding_dict = self.table_sit_binding_norm[t_idx][sit_idx]
+                #
+                _wait_to_updateIN_dict = _New_field_dict_init()
+
+                # ============================
+                # 取得此座位(桌子+椅子 的範圍)的座標
+                _whole_sit_F = _current_binding_dict["whole_sit_region"]
+                #  檢查這個 sit field 有包住哪些 current_yolo_result 的中心點
+                _in_F_res = self.__check_xyxy_in_current_yolo_results(_whole_sit_F)
+                _wait_to_updateIN_dict["in_sit_field_region_Objects"] = _in_F_res['label_name']
+                _wait_to_updateIN_dict["in_sit_field_region_Objects_xyxyn"] = _in_F_res['xyxyn']
+                _wait_to_updateIN_dict["in_sit_field_region_Objects_p"] = _in_F_res['p']
+                # ============================
+                # 取得此桌子的座標
+                _table_F = _current_binding_dict["table_field_region"]
+                #  檢查這個 table field 有包住哪些 current_yolo_result 的中心點
+                _in_F_res = self.__check_xyxy_in_current_yolo_results(_table_F)
+                _wait_to_updateIN_dict["in_table_field_region_Objects"] = _in_F_res['label_name']
+                _wait_to_updateIN_dict["in_table_field_region_Objects_xyxyn"] = _in_F_res['xyxyn']
+                _wait_to_updateIN_dict["in_table_field_region_Objects_p"] = _in_F_res['p']
+                # ============================
+                # 取得此椅子的座標
+                _chair_F = _current_binding_dict["sit_field_region"]
+                #  檢查這個 chair field 有包住哪些 current_yolo_result 的中心點
+                _in_F_res = self.__check_xyxy_in_current_yolo_results(_chair_F)
+                _wait_to_updateIN_dict["in_chair_field_region_Objects"] = _in_F_res['label_name']
+                _wait_to_updateIN_dict["in_chair_field_region_Objects_xyxyn"] = _in_F_res['xyxyn']
+                _wait_to_updateIN_dict["in_chair_field_region_Objects_p"] = _in_F_res['p']
+                # ============================
+                # 更新
+                self.table_sit_binding_norm[t_idx][sit_idx].update(_wait_to_updateIN_dict)
 
 """
     讀取 3 個生成出的 pic 檔案，並將其轉換成我自己的類別。
