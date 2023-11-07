@@ -4,6 +4,9 @@ import numpy as np
 from pathlib import Path
 import random
 import copy
+
+
+
 def calculate_polygon_center(points):
     if len(points) < 3:
         raise ValueError("多邊形至少需要3個點")
@@ -40,6 +43,49 @@ def calculate_polygon_center(points):
     total_y /= (6 * area)
 
     return total_x, total_y
+
+def centroid(vertices):
+    x, y = 0, 0
+    n = len(vertices)
+    signed_area = 0
+    for i in range(len(vertices)):
+        x0, y0 = vertices[i]
+        x1, y1 = vertices[(i + 1) % n]
+        # shoelace formula
+        area = (x0 * y1) - (x1 * y0)
+        signed_area += area
+        x += (x0 + x1) * area
+        y += (y0 + y1) * area
+    signed_area *= 0.5
+    x /= 6 * signed_area
+    y /= 6 * signed_area
+    return x, y
+
+def draw_norm_polygon_on_image(image: np.ndarray, polygon: np.ndarray, color, thickness, inward=True):
+    polygon = polygon.copy()
+    center = None
+    if 0:
+        # 端點內縮
+        center = calculate_polygon_center(polygon)
+        # add (point -> center vector) to each point
+        for i in range(len(polygon)):
+            if 0:
+                polygon[i] += (center - polygon[i]) * 0.06
+            else:
+                _p2c_vec = np.linalg.norm(center - polygon[i])
+                polygon[i] += (center - polygon[i]) * (0.06 )
+    #
+    polygon[:, 0] *= image.shape[1]
+    polygon[:, 1] *= image.shape[0]
+
+    if inward:
+        center = np.array(centroid(polygon))
+        for i in range(len(polygon)):
+            vec_len = np.linalg.norm(center - polygon[i])
+            ratio = thickness/vec_len
+            polygon[i] += (center - polygon[i]) * (ratio)*1.05 # 越>1 框
+
+    cv2.polylines(image, [polygon.astype(np.int32)], True, color, thickness)
 
 
 def point_in_polygon(point_xy: tuple[float, float], polygon_list: np.ndarray) -> bool:

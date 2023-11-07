@@ -763,35 +763,130 @@ if __name__ == "__main__":
         # print("\t", scene_1.person_in_chair_N)
         # {0: [0, 0, 0, 0, 0, 0, 0, 0], 1: [0, 0, 0, 0, 0, 0, 0]}  <-- 初始範例
         #
-        for table_idx, chair_mask in scene_1.person_in_chair_N.items():
-            if sum(chair_mask) == 0:
-                print("桌子", table_idx+1, "沒有人")
-                continue
-            else:
-                print("桌子 {} : 此桌目前占用 {} 人 / 剩餘座位: {} / 桌子座位總數: {}".
-                      format(table_idx+1, sum(chair_mask), len(chair_mask) - sum(chair_mask), len(chair_mask)))
-                # random color
-                _rand_color = (random.randint(127, 255), random.randint(127, 255), random.randint(127, 255))
-                for idx, mask_TF in enumerate(chair_mask):
-                    if mask_TF:  # mask true false...
-                        # 印出座標
-                        _norm_pos_xy = scene_1.chair_points[table_idx][idx].copy()
-                        #print("assert debug: ", _norm_pos_xy)
-                        if (0 <= _norm_pos_xy[0] <= 1 and 0 <= _norm_pos_xy[1] <= 1):
-                            _norm_pos_xy[0] = int(_norm_pos_xy[0] * scene_1.yolo_detect_w)
-                            _norm_pos_xy[1] = int(_norm_pos_xy[1] * scene_1.yolo_detect_h)
-                        #print("  : 椅子編號", idx, "的位置有人", _norm_pos_xy)
-                        # 繪製 dot
-                        __dot_eval_x, __dot_eval_y = clean_frame.shape[1::-1]
-                        __min_dot_size = int (min(__dot_eval_x, __dot_eval_y) * 0.01)
-                        cv2.circle(clean_frame, _norm_pos_xy, __min_dot_size, _rand_color, -1)  # 實心
+        use_old_method_rander = False
+        if use_old_method_rander:
+            #
+            for table_idx, chair_mask in scene_1.person_in_chair_N.items():
+                if sum(chair_mask) == 0:
+                    print("桌子", table_idx+1, "沒有人")
+                    continue
+                else:
+                    print("桌子 {} : 此桌目前占用 {} 人 / 剩餘座位: {} / 桌子座位總數: {}".
+                          format(table_idx+1, sum(chair_mask), len(chair_mask) - sum(chair_mask), len(chair_mask)))
+                    # random color
+                    _rand_color = (random.randint(127, 255), random.randint(127, 255), random.randint(127, 255))
+                    for idx, mask_TF in enumerate(chair_mask):
+                        if mask_TF:  # mask true false...
+                            # 印出座標
+                            _norm_pos_xy = scene_1.chair_points[table_idx][idx].copy()
+                            #print("assert debug: ", _norm_pos_xy)
+                            if (0 <= _norm_pos_xy[0] <= 1 and 0 <= _norm_pos_xy[1] <= 1):
+                                _norm_pos_xy[0] = int(_norm_pos_xy[0] * scene_1.yolo_detect_w)
+                                _norm_pos_xy[1] = int(_norm_pos_xy[1] * scene_1.yolo_detect_h)
+                            #print("  : 椅子編號", idx, "的位置有人", _norm_pos_xy)
+                            # 繪製 dot
+                            __dot_eval_x, __dot_eval_y = clean_frame.shape[1::-1]
+                            __min_dot_size = int (min(__dot_eval_x, __dot_eval_y) * 0.01)
+                            cv2.circle(clean_frame, _norm_pos_xy, __min_dot_size, _rand_color, -1)  # 實心
+            #
+            # 繪製桌子編號
+            scene_1.draw_table_idx_on_frame(clean_frame)
+            #
+            cv2.imshow("Person dot detection Debug, same table person have same dot Color",
+                      resize_image_with_max_resolution(clean_frame, 800))
+            #cv2.waitKey(1000)
+        # ===================================================================
         #
-        # 繪製桌子編號
-        scene_1.draw_table_idx_on_frame(clean_frame)
+        use_field_binding_list_rander = True
         #
-        cv2.imshow("Person dot detection Debug, same table person have same dot Color",
-                  resize_image_with_max_resolution(clean_frame, 800))
-        cv2.waitKey(1000)
+        DRAW_TABLE_FIELD = False
+        DRAW_SIT_ONLY_FIELD = False
 
-    cv2.waitKey(0)
+        #
+        if use_field_binding_list_rander:
+            # copy output frame
+            field_output_frame2 = test_frame.copy()
+            _w, _h = field_output_frame2.shape[1::-1]
+            # 整個桌子占用的顏色
+            whole_sit_bbox_color_occupied, whole_thickness = (0, 0, 255), 10
+            whole_sit_bbox_color_idle = (0, 255, 0)
+            #
+            # 桌子占用的顏色
+            table_bbox_color_occupied, table_thickness = (0, 0, 255), 8
+            table_bbox_color_idle = (5, 255, 2)
+            #
+            # 椅子占用的顏色
+            sit_bbox_color_occupied, sit_thickness = (0, 0, 255), 8
+            sit_bbox_color_idle = (10, 255, 10)
+            #
+            for table_idx, cur_table_sit_list in enumerate(scene_1.table_sit_binding_norm):
+                # parameters ~~ preparing ~~
+                display_table_idx = table_idx + 1
+                for sit_idx, a_sit in enumerate(cur_table_sit_list):
+                    display_sit_idx = sit_idx + 1
+                    # 檢查這個位置的 注入的 Objects 訊息，決定是否需要印出
+                    _whole_sit_F = a_sit["whole_sit_region"]
+                    _table_F = a_sit["table_field_region"]
+                    _sit_F = a_sit["sit_field_region"]
+                    #
+                    # 檢查 whole field 範圍是否有 label
+                    _w_bboxn = _whole_sit_F
+                    #
+                    # 印個基底白
+                    draw_norm_polygon_on_image(field_output_frame2, _w_bboxn, (255, 255, 255),
+                                               thickness=whole_thickness, inward=False)
+                    #
+                    if len(a_sit["in_sit_field_region_Objects"]) != 0\
+                            or len(a_sit["in_table_field_region_Objects"]) != 0\
+                            or len(a_sit["in_chair_field_region_Objects"]) != 0:
+                        # 有 label 則化占用框
+                        for w_label in a_sit["in_sit_field_region_Objects"]:
+                            draw_norm_polygon_on_image(field_output_frame2, _w_bboxn, whole_sit_bbox_color_occupied,
+                                                       whole_thickness)
+                            # 除非未來有多個 label 要印出咚咚的需求，否則有印 occupied 即可跳走
+                            break
+                    else:
+                        # 空閒狀態
+                        draw_norm_polygon_on_image(field_output_frame2, _w_bboxn, whole_sit_bbox_color_idle,
+                                                   whole_thickness)
+                    #
+                    # ===================================================================
+                    # 檢查 table field 範圍是否有 label:
+                    _w_bboxn = _table_F
+                    if DRAW_TABLE_FIELD:
+                        if len(a_sit["in_table_field_region_Objects"]) != 0:
+                            # 有 label 則化占用框
+                            for w_label in a_sit["in_table_field_region_Objects"]:
+                                draw_norm_polygon_on_image(field_output_frame2, _w_bboxn, table_bbox_color_occupied,
+                                                           table_thickness)
+                                # 除非未來有多個 label 要印出咚咚的需求，否則有印 occupied 即可跳走
+                                break
+                        else:
+                            # 空閒狀態
+                            draw_norm_polygon_on_image(field_output_frame2, _w_bboxn, table_bbox_color_idle,
+                                                       table_thickness)
+                    #
+                    # ===================================================================
+                    # 檢查 sit field 範圍是否有 label:
+                    _w_bboxn = _sit_F
+                    if DRAW_SIT_ONLY_FIELD:
+                        if len(a_sit["in_chair_field_region_Objects"]) != 0:
+                            # 有 label 則化占用框
+                            for w_label in a_sit["in_chair_field_region_Objects"]:
+                                draw_norm_polygon_on_image(field_output_frame2, _w_bboxn, sit_bbox_color_occupied,
+                                                           sit_thickness)
+                                # 除非未來有多個 label 要印出咚咚的需求，否則有印 occupied 即可跳走
+                                break
+                        else:
+                            # 空閒狀態
+                            draw_norm_polygon_on_image(field_output_frame2, _w_bboxn, sit_bbox_color_idle,
+                                                       sit_thickness)
+                    #  A sit iterate complete... go to next sit ~
+                #  A table iterate complete... go to next sit ~
+            # all table done show it
+            cv2.imshow("field_output_frame2", resize_image_with_max_resolution(field_output_frame2, 800))
+        # ===================================================================
+        # use_field_binding_list_rander === END ===
+        cv2.waitKey(800)
+    #cv2.waitKey(0)
     cv2.destroyAllWindows()
