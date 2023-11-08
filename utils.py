@@ -61,6 +61,35 @@ def centroid(vertices):
     y /= 6 * signed_area
     return x, y
 
+
+def shrink_polygon(pts, edge_thickness):
+    """
+    對多邊形進行內縮，因為 thickness 會影響 臨邊的顯示。
+    :param pts:  需要使用實際 pixel 座標
+    :param edge_thickness:
+    :return:
+    """
+
+    # 計算四邊形的中心點
+    center = np.mean(pts, axis=0)
+
+    # 初始化一個新的點陣列
+    new_pts = np.zeros_like(pts)
+
+    # 對每個頂點進行內縮
+    for i, point in enumerate(pts):
+        # 計算從中心到頂點的向量
+        vector_to_center = center - point
+
+        # 根據邊的粗細對向量進行縮放
+        shrink_factor = edge_thickness[i] / np.linalg.norm(vector_to_center)
+
+        # 更新頂點位置
+        new_pts[i] = point + vector_to_center * shrink_factor
+
+    return new_pts
+
+
 def draw_norm_polygon_on_image(image: np.ndarray, polygon: np.ndarray, color, thickness, inward=True):
     polygon = polygon.copy()
     center = None
@@ -78,12 +107,15 @@ def draw_norm_polygon_on_image(image: np.ndarray, polygon: np.ndarray, color, th
     polygon[:, 0] *= image.shape[1]
     polygon[:, 1] *= image.shape[0]
 
-    if inward:
+    if 0: # tmp good
         center = np.array(centroid(polygon))
         for i in range(len(polygon)):
             vec_len = np.linalg.norm(center - polygon[i])
             ratio = thickness/vec_len
             polygon[i] += (center - polygon[i]) * (ratio)*1.05 # 越>1 框
+    elif inward:
+        _ = polygon.copy()
+        polygon = shrink_polygon(_, [thickness for _ in range(len(polygon) )])
 
     cv2.polylines(image, [polygon.astype(np.int32)], True, color, thickness)
 
