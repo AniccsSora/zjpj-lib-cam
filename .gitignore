@@ -6,3 +6,7 @@
 /web_fetch_DONT_UPLOAD_GITHUB.py
 /datacase/case2/*.pic
 /__pycache__/*.pyc
+*.pyc
+*.pt
+*.png
+*.pptx

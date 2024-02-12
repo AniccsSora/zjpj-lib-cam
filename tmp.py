@@ -341,7 +341,8 @@ if __name__ == "__main__":
     if _use_ideal_debug:
         clac_sit_table_fields_dict(debug_mode=True)  # ideal test case
     else:
-        real_image = cv2.imread(r"C:\cgit\zjpj-lib-cam\datacase\case1\2F_North\2023-10-23-193851.jpg")
+        real_image = cv2.imread(r"C:\cgit\zjpj-lib-cam\datacase\case1\2F_North\2023-10-23-195003.jpg")
+        assert real_image is not None, "real_image is None"
         real_image = resize_image_with_max_resolution(real_image, 800)
         parallelogram_norm = load_table_N_to_data_struct(Path("./datacase/case1/table_N.pic"))[0]
         # 計算座位的 binding list

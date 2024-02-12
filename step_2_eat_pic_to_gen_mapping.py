@@ -24,8 +24,9 @@ def develope_mode():
 args_G = None
 
 class Secne_Table_chair:
-    def __init__(self, case_root):
+    def __init__(self, case_root, debug_mode=False):
         self.args = args_G
+        self.debug_mode = debug_mode
         self.polygen_points = None  # polygen_points
         self.table_points = None  # table_points
         self.chair_points = None  # chair_points
@@ -201,7 +202,9 @@ class Secne_Table_chair:
         self.table_points = load_table_N_to_data_struct(_)
         self.table_sit_binding_norm = [None for _ in range(len(self.table_points))]
         for i in range(len(self.table_points)):
-            self.table_sit_binding_norm[i] = clac_sit_table_fields_dict(np.array(self.table_points[i]))
+            self.table_sit_binding_norm[i] = clac_sit_table_fields_dict(np.array(self.table_points[i]),
+                                                                        debug_mode=self.debug_mode,  # !!! debug mode
+                                                                        )
         # load 椅子位置
         _ = case_root.joinpath(args.chair_pic)
         assert case_root.joinpath(args.chair_pic).exists()
@@ -422,7 +425,7 @@ class Secne_Table_chair:
         :param debug_resize: 0: 不縮放原始大小,  >0: 高度縮放到指定大小
         :return:
         """
-        self.yolo_detect(frame)
+        self.yolo_detect(frame, verbose=self.debug_mode)
 
         # 更新 binding list 訊息，經由 yolo_detect() 結果填充
         #
@@ -687,6 +690,7 @@ if __name__ == "__main__":
                                  '2F閱覽區(西南側)','B1F閱覽區(北側)',
                                  'B1F閱覽區(南側)','B1F閱覽區(西側)']
                         )
+    parser.add_argument("--debug_mode", action="store_true", help="debug mode")
     # parser.add_argument("--mode", choices=['table', 'polygon', 'chair'], type=str, help="choose mode")
     # 解析命令行參數
     args = parser.parse_args()
@@ -695,7 +699,7 @@ if __name__ == "__main__":
     case_root = Path(args.case_root)  # case 根目錄
 
     #
-    scene_1 = Secne_Table_chair(case_root=case_root)
+    scene_1 = Secne_Table_chair(case_root=case_root, debug_mode=args.debug_mode)
 
     if args.check_preAnchor:
         scene_1.display_all_region_chair_table()
@@ -754,7 +758,7 @@ if __name__ == "__main__":
 
         clean_frame = test_frame.copy()
         # 檢測此 frame 並填充此 class 的資料
-        scene_1.yolo_watch(test_frame, debug_show=False, debug_resize=800)  # dddddddddddddddd
+        scene_1.yolo_watch(test_frame, debug_show=args_G.debug_mode, debug_resize=800)  # dddddddddddddddd
         #
         # print("debug chair_person_binding_list:")
         # print("\t", scene_1.chair_person_binding_list)

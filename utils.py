@@ -872,12 +872,13 @@ def clac_sit_table_fields_dict(parallelogram_norm=None, real_imgae=None, sits_nu
 
     num_points = 20
     # 在圖像上隨機生成點的座標並繪製
-    for _ in range(num_points):
-        x = random.randint(0, width - 1)
-        y = random.randint(0, height - 1)
-        color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))  # 隨機顏色
-        if debug_mode:
-            cv2.circle(background, (x, y), 2, color, -1)  # 繪製點
+    if False:  # 不撒點
+        for _ in range(num_points):
+            x = random.randint(0, width - 1)
+            y = random.randint(0, height - 1)
+            color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))  # 隨機顏色
+            if debug_mode:
+                cv2.circle(background, (x, y), 2, color, -1)  # 繪製點
 
     # 保存圖像為文件
     # cv2.imwrite('parallel_quadrilateral.png', background)
@@ -1100,10 +1101,10 @@ def clac_sit_table_fields_dict(parallelogram_norm=None, real_imgae=None, sits_nu
         _x /= w
         _y /= w
         mapped_parallelogram_pixel[i] = np.array([_x, _y], dtype=np.int32)
-    # 繪製在 output 上
+    # 繪製桌面四個點在 output 上
     for xy in mapped_parallelogram_pixel:
         x, y = xy
-        cv2.circle(output, (x, y), 10, (34, 255, 0), -1)
+        cv2.circle(output, (x, y), 3, (34, 255, 0), -1)
     # 把他們連起來
     for i in range(len(mapped_parallelogram_pixel)):
         p1 = mapped_parallelogram_pixel[i]
@@ -1279,7 +1280,7 @@ def clac_sit_table_fields_dict(parallelogram_norm=None, real_imgae=None, sits_nu
 
     if debug_mode:
         cv2.imshow("Image1", background)
-        cv2.imshow("output", output)
+        cv2.imshow("output-887", output)
         cv2.imshow("field_output", field_output)
         cv2.waitKey(300000)
         cv2.destroyAllWindows()

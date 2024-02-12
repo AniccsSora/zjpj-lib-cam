@@ -240,6 +240,8 @@ command:
     
     # table 範圍偵測設定
     python  step_1_case_layout_paint.py --case_root "./datacase/case1" --mode="table" --verbose
+    python  step_1_case_layout_paint.py --case_root "./datacase/case1" --mode="table" --image_folder_name="2F_North" --verbose
+    #
     python  step_1_case_layout_paint.py --case_root "./datacase/case2" --mode="table" --image_folder_name="B1F_south" --verbose
     
     # chair 
