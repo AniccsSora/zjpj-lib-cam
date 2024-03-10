@@ -14,6 +14,10 @@ import glob
 from typing import List, Tuple
 import time
 from web_fetch_DONT_UPLOAD_GITHUB import lib_camera_generator
+from utilsv2.state_machine.StateMachine import TB_StateMachine
+from utilsv2.state_machine.StateMachine import State as TB_State
+from utilsv2.my_queue.qqueue import Queue as My_Queue
+
 
 def develope_mode():
     return False
@@ -579,6 +583,12 @@ class Secne_Table_chair:
         """
         def _New_field_dict_init():
             """ 要附加的額外資訊 dict init Data Unit """
+            #
+            _queue_len = 5
+            _queue = My_Queue(_queue_len)
+            [_queue.enqueue(TB_State.UNDEFINE) for _ in range(_queue_len)]
+            #
+
             return {"in_sit_field_region_Objects": [],   # 存入名稱用
                     "in_sit_field_region_Objects_xyxyn": [],  # bbox 位置
                     "in_sit_field_region_Objects_p": [],  # 精準度用
@@ -590,6 +600,9 @@ class Secne_Table_chair:
                     "in_chair_field_region_Objects": [],
                     "in_chair_field_region_Objects_xyxyn": [],
                     "in_chair_field_region_Objects_p": [],
+                    # --- 附上 init 的 state machine
+                    "state_machine": TB_StateMachine(),
+                    "history_state_queue": _queue,
                     }
         # ============================
         for t_idx in range(len(self.table_sit_binding_norm)):
@@ -766,6 +779,20 @@ if __name__ == "__main__":
         # print("debug person_in_chair_N:")
         # print("\t", scene_1.person_in_chair_N)
         # {0: [0, 0, 0, 0, 0, 0, 0, 0], 1: [0, 0, 0, 0, 0, 0, 0]}  <-- 初始範例
+        #
+
+        # TODO : staTE AFTER
+        scene_1.table_sit_binding_norm[0][1]['state_machine']
+
+        # 紀錄歷史 state
+        scene_1.table_sit_binding_norm[0][1]['history_state_queue'].enqueue(TB_State.UNDEFINE)
+        # 觀看
+        scene_1.table_sit_binding_norm[0][1]['history_state_queue'].peek(position=0)
+        #
+        # 檢查 state.
+        # TB_State.UNDEFINE == scene_1.table_sit_binding_norm[0][1]['state_machine'].get_state()
+        #
+
         #
         use_old_method_rander = False
         if use_old_method_rander:
