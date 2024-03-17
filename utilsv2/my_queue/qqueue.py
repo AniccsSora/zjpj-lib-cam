@@ -21,6 +21,8 @@ class Queue:
     def is_empty(self):
         return len(self.queue) == 0
 
+    def _get_queue_lst(self):
+        return self.queue
 
 if __name__ == "__main__":
     q = Queue(5)

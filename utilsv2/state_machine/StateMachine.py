@@ -1,7 +1,7 @@
 
 from enum import Enum, auto
-
-
+from utilsv2.my_queue.qqueue import Queue
+from collections import Counter
 class State(Enum):
     UNDEFINE = -1
     VACANT = 1
@@ -18,24 +18,47 @@ class TB_StateMachine:
     def get_state(self):
         return self.state
 
+    def get_state_str(self):
+        return str(self.state).split('.')[-1]
+
     def to_available(self):
-        if self.state == State.VACANT:
-            self.state = State.AVAILABLE
-            return 0
-        return -1  # 狀態轉換失敗
+        self.state = State.AVAILABLE
+        return 0
 
     def to_occupied(self):
-        if self.state == State.AVAILABLE:
-            self.state = State.OCCUPIED
-            return 0
-        return -1  # 狀態轉換失敗
+        self.state = State.OCCUPIED
+        return 0
 
     def to_vacant(self):
-        if self.state == State.OCCUPIED:
-            self.state = State.VACANT
-            return 0
-        return -1  # 狀態轉換失敗
+        self.state = State.VACANT
+        return 0
 
+
+    def get_truth_state(self, queue: Queue):
+        """
+        Base on queue, 來判斷真正的狀態
+        # 藉由過去的質狀態積累，來判斷真正的狀態。
+        :return:
+        """
+        ll = queue._get_queue_lst().copy()
+        # 移除 undefine
+        while (1):
+            try:
+                ll.remove(State.UNDEFINE)
+            except ValueError:
+                break
+        element_count = Counter(ll)
+
+        # most_common(1) return 最多的元素
+        if element_count:
+            # 返回最多次數元素的 enum's str.
+            most_cnt = element_count.most_common(1)[0][0]
+
+            return str(most_cnt).split('.')[-1]
+        else:
+            # 如果列表為空
+            print(" [狀態判斷錯誤] list為空。")
+            return -1
 
 if __name__ == "__main__":
     #

@@ -34,6 +34,8 @@ class Secne_Table_chair:
         self.polygen_points = None  # polygen_points
         self.table_points = None  # table_points
         self.chair_points = None  # chair_points
+        self.state_machine_init = False
+        self.state_history_init = False
         self._path_init(case_root)
         assert self.polygen_points is not None
         assert self.table_points is not None
@@ -574,19 +576,50 @@ class Secne_Table_chair:
                 res['p'].append(_p)
         return res
 
+    def get_secne_state_machine(self, table_id, chair_id):
+        if self.state_machine_init == False:
+            self.state_machine_init = True
+            # new state machine handler
+            self.scene_state_machine = [ list() for _ in range(self.table_numbers())]
+            for __table_id in range(self.table_numbers()):
+                # 初始化所有 state machine
+                self.scene_state_machine[__table_id] = \
+                [TB_StateMachine() for _ in range(self.chairs_numbers_in_table_N(__table_id))]
+        #
+        return self.scene_state_machine[table_id][chair_id]
 
+
+    # ===================================================================
+    def get_scene_state_history(self, table_id, chair_id):
+        if self.state_history_init == False:
+            self.state_history_init = True
+            # new queue history handler
+            self.scene_state_history = [ list() for _ in range(self.table_numbers())]
+            for __table_id in range(self.table_numbers()):
+                def _new_queue():
+                    _queue_len = 5
+                    _queue = My_Queue(_queue_len)
+                    [_queue.enqueue(TB_State.UNDEFINE) for _ in range(_queue_len)]
+                    return _queue
+                # 初始化所有 state queue history
+                self.scene_state_history[__table_id] = \
+                [_new_queue() for _ in range(self.chairs_numbers_in_table_N(__table_id))]
+        #
+        return self.scene_state_history[table_id][chair_id]
+
+    #===================================================================
     def update_yolo_result_into_binding_list(self):
         # 桌子結果數量相等必須
         assert len(self.table_sit_binding_norm) == len(self.person_in_table_N)
         """
         self.table_sit_binding_norm[桌子編號][座位號]
         """
-        def _New_field_dict_init():
+        def _New_field_dict_init(table_id, chair_id):
             """ 要附加的額外資訊 dict init Data Unit """
-            #
-            _queue_len = 5
-            _queue = My_Queue(_queue_len)
-            [_queue.enqueue(TB_State.UNDEFINE) for _ in range(_queue_len)]
+            # 沒有用 單一初始化池的方式
+            # _queue_len = 5
+            # _queue = My_Queue(_queue_len)
+            # [_queue.enqueue(TB_State.UNDEFINE) for _ in range(_queue_len)]
             #
 
             return {"in_sit_field_region_Objects": [],   # 存入名稱用
@@ -601,8 +634,10 @@ class Secne_Table_chair:
                     "in_chair_field_region_Objects_xyxyn": [],
                     "in_chair_field_region_Objects_p": [],
                     # --- 附上 init 的 state machine
-                    "state_machine": TB_StateMachine(),
-                    "history_state_queue": _queue,
+                    #"state_machine": TB_StateMachine(),
+                    "state_machine": self.get_secne_state_machine(table_id, chair_id),
+                    #"history_state_queue": _queue,
+                    "history_state_queue": self.get_scene_state_history(table_id, chair_id),
                     }
         # ============================
         for t_idx in range(len(self.table_sit_binding_norm)):
@@ -611,7 +646,7 @@ class Secne_Table_chair:
                 self.table_sit_binding_norm[t_idx][sit_idx]
                 _current_binding_dict = self.table_sit_binding_norm[t_idx][sit_idx]
                 #
-                _wait_to_updateIN_dict = _New_field_dict_init()
+                _wait_to_updateIN_dict = _New_field_dict_init(t_idx, sit_idx)
 
                 # ============================
                 # 取得此座位(桌子+椅子 的範圍)的座標
@@ -779,19 +814,6 @@ if __name__ == "__main__":
         # print("debug person_in_chair_N:")
         # print("\t", scene_1.person_in_chair_N)
         # {0: [0, 0, 0, 0, 0, 0, 0, 0], 1: [0, 0, 0, 0, 0, 0, 0]}  <-- 初始範例
-        #
-
-        # TODO : staTE AFTER
-        scene_1.table_sit_binding_norm[0][1]['state_machine']
-
-        # 紀錄歷史 state
-        scene_1.table_sit_binding_norm[0][1]['history_state_queue'].enqueue(TB_State.UNDEFINE)
-        # 觀看
-        scene_1.table_sit_binding_norm[0][1]['history_state_queue'].peek(position=0)
-        #
-        # 檢查 state.
-        # TB_State.UNDEFINE == scene_1.table_sit_binding_norm[0][1]['state_machine'].get_state()
-        #
 
         #
         use_old_method_rander = False
@@ -834,6 +856,9 @@ if __name__ == "__main__":
         DRAW_SIT_ONLY_FIELD = False
 
         #
+        DRAW_STATE_MACHINE_TEXT_ON_SIT = True
+        #
+        #
         if use_field_binding_list_rander:
             # copy output frame
             field_output_frame2 = test_frame.copy()
@@ -841,6 +866,7 @@ if __name__ == "__main__":
             # 整個桌子占用的顏色
             whole_sit_bbox_color_occupied, whole_thickness = (0, 0, 255), 10
             whole_sit_bbox_color_idle = (0, 255, 0)
+            whole_sit_bbox_color_available = (255, 0, 0)
             #
             # 桌子占用的顏色
             table_bbox_color_occupied, table_thickness = (0, 0, 255), 8
@@ -859,6 +885,8 @@ if __name__ == "__main__":
                     _whole_sit_F = a_sit["whole_sit_region"]
                     _table_F = a_sit["table_field_region"]
                     _sit_F = a_sit["sit_field_region"]
+                    _a_sit_state_machine = a_sit["state_machine"]
+                    _a_stt_state_history = a_sit["history_state_queue"]
                     #
                     # 檢查 whole field 範圍是否有 label
                     _w_bboxn = _whole_sit_F
@@ -866,22 +894,79 @@ if __name__ == "__main__":
                     # 印個基底白
                     draw_norm_polygon_on_image(field_output_frame2, _w_bboxn, (255, 255, 255),
                                                thickness=whole_thickness, inward=False)
-                    #
+                    # 座位區有物物件進入(有 label)
                     if len(a_sit["in_sit_field_region_Objects"]) != 0\
                             or len(a_sit["in_table_field_region_Objects"]) != 0\
                             or len(a_sit["in_chair_field_region_Objects"]) != 0:
+                        #*******************
+                        # # !!! 舊的繪製地方。新版狀態機繪製，會往下方後判斷後繪製
                         # 有 label 則化占用框
-                        for w_label in a_sit["in_sit_field_region_Objects"]:
-                            draw_norm_polygon_on_image(field_output_frame2, _w_bboxn, whole_sit_bbox_color_occupied,
-                                                       whole_thickness)
-                            # 除非未來有多個 label 要印出咚咚的需求，否則有印 occupied 即可跳走
-                            break
+                        # for w_label in a_sit["in_sit_field_region_Objects"]:
+                        #     draw_norm_polygon_on_image(field_output_frame2, _w_bboxn, whole_sit_bbox_color_occupied,
+                        #                                whole_thickness)
+                        #     # 除非未來有多個 label 要印出咚咚的需求，否則有印 occupied 即可跳走
+                        #     break
+                        #*******************
+                        # ================== 處理 state machine ==================
+                        # 有人
+                        if 'person' in a_sit["in_sit_field_region_Objects"]:
+                            # move state to Occupied(有佔用) 狀態
+                            _a_sit_state_machine.to_occupied()
+                            _a_stt_state_history.enqueue(TB_State.OCCUPIED)
+                        else:  # 非人物品占用
+                            # move state machine to available(可使用，但有物品) 狀態
+                            _a_sit_state_machine.to_available()
+                            _a_stt_state_history.enqueue(TB_State.AVAILABLE)
                     else:
                         # 空閒狀態
-                        draw_norm_polygon_on_image(field_output_frame2, _w_bboxn, whole_sit_bbox_color_idle,
-                                                   whole_thickness)
+                        # # !!! 舊的繪製地方。新版狀態機繪製，會往下方後判斷後繪製
+                        # draw_norm_polygon_on_image(field_output_frame2, _w_bboxn, whole_sit_bbox_color_idle,
+                        #                            whole_thickness)
+                        # move state machine to Vacant(無佔用) 狀態
+                        _a_sit_state_machine.to_vacant()
+                        _a_stt_state_history.enqueue(TB_State.VACANT)  # 紀錄塞入狀態
+
                     #
                     # ===================================================================
+                    #3
+                    the_truth_state = _a_sit_state_machine.get_truth_state(_a_stt_state_history)
+                    # New ---- 根據狀態機的真實狀態，決定要印出的文字
+                    if the_truth_state == "OCCUPIED":
+                        draw_norm_polygon_on_image(field_output_frame2, _w_bboxn, whole_sit_bbox_color_occupied,
+                                                       whole_thickness)
+                    elif the_truth_state == "AVAILABLE":
+                        draw_norm_polygon_on_image(field_output_frame2, _w_bboxn, whole_sit_bbox_color_available,
+                                                   whole_thickness)
+                    elif the_truth_state == "VACANT":
+                        draw_norm_polygon_on_image(field_output_frame2, _w_bboxn, whole_sit_bbox_color_idle,
+                                                   whole_thickness)
+
+                    #
+                    if DRAW_STATE_MACHINE_TEXT_ON_SIT:
+                        # 印出 state_list
+                        # print(_a_stt_state_history._get_queue_lst())
+                        ####
+                        # 透過狀態機，決定要印出的文字
+                        #the_truth_state = _a_sit_state_machine.get_truth_state(_a_stt_state_history)
+                        state_display_str = _a_sit_state_machine.get_state_str()
+                        if (the_truth_state != -1):  # 具有真實狀態 可採用
+                            state_display_str = the_truth_state
+                        # =======
+                        # 算出中心點
+                        _poly_center = calculate_polygon_center(_w_bboxn)
+                        # 繪製 state text on image.
+                        cv2.putText(img=field_output_frame2,
+                                    text=state_display_str,
+                                    org=(int(_poly_center[0] * field_output_frame2.shape[1]),  # x, de-normalize
+                                         int(_poly_center[1] * field_output_frame2.shape[0])),  # y, de-normalize
+                                    fontFace=cv2.FONT_HERSHEY_COMPLEX,
+                                    fontScale=1.5, color=(0, 0, 0), thickness=2, lineType=cv2.LINE_AA
+                                    )
+
+
+
+
+                    #
                     # 檢查 table field 範圍是否有 label:
                     _w_bboxn = _table_F
                     if DRAW_TABLE_FIELD:
