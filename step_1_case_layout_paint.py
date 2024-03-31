@@ -233,10 +233,11 @@ command:
         <case_root>
         <verbose> 
     #
-    # 主偵測範圍設定 [deprecation command]
+    # 主偵測範圍設定 [deprecation command] vvvvvvvvvvvvvvvvvvv
     #python  step_1_case_layout_paint.py --case_root "C:\\cgit\\zjpj-lib-cam\\datacase\\case1" --mode='polygon'
     python  step_1_case_layout_paint.py --case_root "./datacase/case1" --mode="polygon" --verbose
     python  step_1_case_layout_paint.py --case_root "./datacase/case2" --mode="polygon" --image_folder_name="B1F_south" --verbose
+    #### [deprecation command]  ^^^^^^^^^^^^^^^^^
     
     # table 範圍偵測設定
     python  step_1_case_layout_paint.py --case_root "./datacase/case1" --mode="table" --verbose

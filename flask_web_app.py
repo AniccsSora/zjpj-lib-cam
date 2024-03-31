@@ -84,9 +84,11 @@ def index():
         total_seats = sum(len(table) for table in tag['seats_color'])
         available_seats = sum(seat == green for table in tag['seats_color'] for seat in table)
         occupied_seats = sum(seat == red__ for table in tag['seats_color'] for seat in table)
+        avaiable_seats = sum(seat == blue_ for table in tag['seats_color'] for seat in table)
         tag['total_seats'] = total_seats
         tag['available_seats'] = available_seats
         tag['occupied_seats'] = occupied_seats
+        tag['avaiable_seats'] = avaiable_seats
 
     return render_template('index.html', tags=tags)
 

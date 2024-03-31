@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="2">
+    <meta http-equiv="refresh" content="1">
     <title>圖書館座位圖</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -29,7 +29,7 @@
 </head>
 <body>
 <div class="container-fluid">
-    <h2 class="text-center mt-5">圖書館座位圖</h2>
+    <h2 class="text-center mt-5">Library seating chart</h2>
 
     <!-- Nav tabs centered -->
     <ul class="nav nav-tabs justify-content-center" id="sceneTabs" role="tablist">
@@ -64,22 +64,26 @@
                     <table class="table">
                         <thead>
                             <tr>
-                                <th scope="col">座位</th>
-                                <th scope="col">數量</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Number</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td>總座位數</td>
+                                <td>Total seats</td>
                                 <td>{{ tag.total_seats }}</td>
                             </tr>
                             <tr>
-                                <td>可用座位</td>
+                                <td>Vacant (Green)</td>
                                 <td>{{ tag.available_seats }}</td>
                             </tr>
                             <tr>
-                                <td>占用座位</td>
+                                <td>Occupied (Red)</td>
                                 <td>{{ tag.occupied_seats }}</td>
+                            </tr>
+                            <tr>
+                                <td>Avaiable (Blue)</td>
+                                <td>{{ tag.avaiable_seats }}</td>
                             </tr>
                         </tbody>
                     </table>

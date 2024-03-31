@@ -681,6 +681,7 @@ class Secne_Table_chair:
     # 這是使用 test image
     python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --verbose
     
+    # 
     # 這是使用 爬下來的 data, case 1
     python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1"  --image_folder_name "2F_North"
     # 
@@ -1040,13 +1041,18 @@ if __name__ == "__main__":
             #print("桌子id", idx, ", list", val)
 
             _a_table_queue_history = scene_1.scene_state_history[idx]
+            _a_table_state_machines = scene_1.scene_state_machine[idx]
+
             # 走訪 val
             for _in_idx in range(len(val)):  ##  根據每個位置的狀態機 來決定顏色
-                if _a_table_queue_history[_in_idx].peek() is TB_State.OCCUPIED:
+                a_seat_single_queue = _a_table_queue_history[_in_idx]
+                a_seat_single_st = _a_table_state_machines[_in_idx]
+                a_seat_truth_label = a_seat_single_st.get_truth_state(a_seat_single_queue)
+                if a_seat_truth_label == "OCCUPIED":
                     _a_seat_color_empty_ready.append(_seat_red__)
-                elif _a_table_queue_history[_in_idx].peek() is TB_State.AVAILABLE:
+                elif a_seat_truth_label == "AVAILABLE":
                     _a_seat_color_empty_ready.append(_seat_blue_)
-                elif _a_table_queue_history[_in_idx].peek() is TB_State.VACANT:
+                elif a_seat_truth_label == "VACANT":
                     _a_seat_color_empty_ready.append(_seat_green)
                 else:
                     _a_seat_color_empty_ready.append(_seat_undefine)
