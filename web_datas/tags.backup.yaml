@@ -1,0 +1,77 @@
+- number_of_tables: 2
+  seats_color:
+  - - &id001 !!python/tuple
+      - 0
+      - 255
+      - 0
+    - &id002 !!python/tuple
+      - 255
+      - 0
+      - 0
+    - *id001
+    - *id002
+    - *id002
+    - *id001
+    - *id002
+    - *id002
+  - - &id003 !!python/tuple
+      - 0
+      - 0
+      - 255
+    - *id003
+    - *id003
+    - *id003
+    - *id003
+    - *id003
+    - *id003
+    - *id003
+  table_layout: !!python/tuple
+  - 2
+  - 4
+  tag_name: scene_1
+- number_of_tables: 3
+  seats_color:
+  - - *id001
+    - *id002
+    - *id001
+    - *id002
+    - *id002
+    - *id001
+  - - *id003
+    - *id003
+    - *id003
+    - *id003
+    - *id003
+    - *id003
+  - - *id003
+    - *id003
+    - *id003
+    - *id003
+    - *id003
+    - *id003
+  table_layout: !!python/tuple
+  - 2
+  - 3
+  tag_name: scene_2
+- number_of_tables: 4
+  seats_color:
+  - - *id001
+    - *id002
+    - *id001
+    - *id002
+  - - *id003
+    - *id003
+    - *id003
+    - *id003
+  - - *id003
+    - *id003
+    - *id003
+    - *id003
+  - - *id001
+    - *id001
+    - *id001
+    - *id001
+  table_layout: !!python/tuple
+  - 2
+  - 2
+  tag_name: scene_3

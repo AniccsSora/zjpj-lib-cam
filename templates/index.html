@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="2">
+    <title>圖書館座位圖</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .seat {
+            width: 50px;
+            height: 50px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 2px;
+            border-radius: 5px;
+            border: 2px solid #0056b3;
+        }
+        .seat-table {
+            flex-grow: 1; /* Ensure the table takes up the space it needs */
+        }
+        .status-table {
+            flex-grow: 1; /* Ensure the table takes up the space it needs */
+        }
+        /* Additional styles */
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <h2 class="text-center mt-5">圖書館座位圖</h2>
+
+    <!-- Nav tabs centered -->
+    <ul class="nav nav-tabs justify-content-center" id="sceneTabs" role="tablist">
+        {% for tag in tags %}
+        <li class="nav-item">
+            <a class="nav-link {% if loop.first %}active{% endif %}" id="{{ tag.tag_name }}-tab" data-toggle="tab" href="#{{ tag.tag_name }}" role="tab" aria-controls="{{ tag.tag_name }}" aria-selected="{% if loop.first %}true{% else %}false{% endif %}">{{ tag.tag_name }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <!-- Tab content with flex layout for alignment -->
+    <div class="tab-content">
+        {% for tag in tags %}
+        <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="{{ tag.tag_name }}" role="tabpanel" aria-labelledby="{{ tag.tag_name }}-tab">
+            <div class="d-flex justify-content-around">
+                <!-- Seats visualization centered -->
+                <div class="seat-table d-flex flex-column align-items-center">
+                    {% for table_index in range(tag.number_of_tables) %}
+                    <div class="d-flex flex-column justify-content-center mb-2">
+                        {% for row in range(tag.table_layout[0]) %}
+                        <div class="d-flex flex-row justify-content-center mb-1">
+                            {% for col in range(tag.table_layout[1]) %}
+                            <div class="seat" style="background-color: rgb({{ tag.seats_color[table_index][row * tag.table_layout[1] + col]|join(', ') }});"> </div>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <!--        START 座位狀態表 div        -->
+                <div class="status-table">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th scope="col">座位</th>
+                                <th scope="col">數量</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>總座位數</td>
+                                <td>{{ tag.total_seats }}</td>
+                            </tr>
+                            <tr>
+                                <td>可用座位</td>
+                                <td>{{ tag.available_seats }}</td>
+                            </tr>
+                            <tr>
+                                <td>占用座位</td>
+                                <td>{{ tag.occupied_seats }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <!--        END 座位狀態表 div        -->
+            </div>
+        </div>
+        {% endfor %}
+
+        <!--   START    圖片放置區域 -->
+        <div class="text-center mt-4" style="display: flex; justify-content: center;">
+            <div style="width: 20%;">
+                <img id="liveFeed" src="/live_feed" alt="圖書館實時監控" style="width: 100%; height: auto;">
+            </div>
+        </div>
+        <!--   END    圖片放置區域 -->
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    // default scene
+    var currentScene = 'scene_1';
+
+    // when switch tag, update live feed image
+    $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+        currentScene = $(e.target).attr('href').replace('#', '');
+        updateLiveFeedImage();
+    });
+
+    function updateLiveFeedImage() {
+        const liveFeed = document.getElementById('liveFeed');
+        liveFeed.src = `/live_feed?scene=${currentScene}&time=${new Date().getTime()}`;
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        updateLiveFeedImage();
+        setInterval(updateLiveFeedImage, 2000);
+    });
+
+</script>
+
+
+</body>
+</html>

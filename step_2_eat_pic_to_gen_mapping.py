@@ -17,7 +17,7 @@ from web_fetch_DONT_UPLOAD_GITHUB import lib_camera_generator
 from utilsv2.state_machine.StateMachine import TB_StateMachine
 from utilsv2.state_machine.StateMachine import State as TB_State
 from utilsv2.my_queue.qqueue import Queue as My_Queue
-
+import flask_web_app as myweb_app
 
 def develope_mode():
     return False
@@ -683,6 +683,9 @@ class Secne_Table_chair:
     
     # 這是使用 爬下來的 data, case 1
     python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1"  --image_folder_name "2F_North"
+    # 
+    # web: 開另外一個 terminal 執行。
+    # python ./flask_web_app.py
     
     # 這是使用 爬下來的 data, case 2
     python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case2"  --image_folder_name "B1F_south"
@@ -807,6 +810,9 @@ if __name__ == "__main__":
         clean_frame = test_frame.copy()
         # 檢測此 frame 並填充此 class 的資料
         scene_1.yolo_watch(test_frame, debug_show=args_G.debug_mode, debug_resize=800)  # dddddddddddddddd
+
+
+
         #
         # print("debug chair_person_binding_list:")
         # print("\t", scene_1.chair_person_binding_list)
@@ -963,9 +969,6 @@ if __name__ == "__main__":
                                     fontScale=1.5, color=(0, 0, 0), thickness=2, lineType=cv2.LINE_AA
                                     )
 
-
-
-
                     #
                     # 檢查 table field 範圍是否有 label:
                     _w_bboxn = _table_F
@@ -1004,5 +1007,80 @@ if __name__ == "__main__":
         # ===================================================================
         # use_field_binding_list_rander === END ===
         cv2.waitKey(800)
+        # ===================================================================
+
+        # gen tags for web
+        new_tags_list = []
+        # 取一個空的 dict for save result
+        new_tags = myweb_app.WEB_get_empty_D_template_for_seat()
+        # hard-code
+        new_tags["tag_name"] = "scene_1"
+
+        # set other value
+        new_tags["number_of_tables"] = scene_1.table_numbers()
+
+        # - set "table_layout": (-1, -1),
+        assert  scene_1.chairs_numbers_in_table_N(0)  >  0   # 預期 第 0 張桌子有 > 0 的座位
+        new_tags["table_layout"] = (2, scene_1.chairs_numbers_in_table_N(0)//2)
+
+        #  "seats_color": [], 根據 桌子狀態，填入顏色
+        # --- 固定參數 取得~
+        _seat_blue_ = myweb_app.WEB_SEAT_COLOR["blue_"]
+        _seat_green = myweb_app.WEB_SEAT_COLOR["green"]
+        _seat_red__ = myweb_app.WEB_SEAT_COLOR["red__"]
+        _seat_undefine = (255,255,255)
+        # ---
+
+        # ---
+        hehe_dict = scene_1.person_in_chair_N
+
+        # -- set "seats_color": [],
+        for idx, val in hehe_dict.items():
+            _a_seat_color_empty_ready = []
+            #print("桌子id", idx, ", list", val)
+
+            _a_table_queue_history = scene_1.scene_state_history[idx]
+            # 走訪 val
+            for _in_idx in range(len(val)):  ##  根據每個位置的狀態機 來決定顏色
+                if _a_table_queue_history[_in_idx].peek() is TB_State.OCCUPIED:
+                    _a_seat_color_empty_ready.append(_seat_red__)
+                elif _a_table_queue_history[_in_idx].peek() is TB_State.AVAILABLE:
+                    _a_seat_color_empty_ready.append(_seat_blue_)
+                elif _a_table_queue_history[_in_idx].peek() is TB_State.VACANT:
+                    _a_seat_color_empty_ready.append(_seat_green)
+                else:
+                    _a_seat_color_empty_ready.append(_seat_undefine)
+
+            new_tags["seats_color"].append(_a_seat_color_empty_ready)
+        print(" ")
+
+        # 這邊超級 hard code 座位順序
+        if len(new_tags['seats_color']) == 2:
+            seat_0 = new_tags['seats_color'][0].copy()
+            seat_1 = new_tags['seats_color'][1].copy()
+            # swap
+            new_tags['seats_color'][0] = None
+            # [0~8] = 0 1 2 3     4 5 6 7
+            # [3::-1] + [7:3:-1] > 3 2 1 0    7 6 5 4
+            new_tags['seats_color'][0] = seat_1[8//2:] + seat_1[0:8//2]
+            new_tags['seats_color'][1] = None
+            new_tags['seats_color'][1] = seat_0[8//2:] + seat_0[0:8//2]
+        elif len(new_tags['seats_color']) == 1:
+            new_tags['seats_color'][0] = new_tags['seats_color'][0][::-1]
+        # hard-code end
+
+        new_tags_list.append(new_tags)
+        myweb_app.write_tags_to_yaml(new_tags_list)
+        # ================= for web tags end =================
+
+        # save scene_1 image
+        # save image
+
+        #to_web_image = test_frame.copy()  # no debug
+        to_web_image = field_output_frame2.copy()  # debug
+        cv2.imwrite("./web_datas/scene_real_time/scene_1.jpg", to_web_image)
+        # ============================ for web alter data process end =======================================
+
     #cv2.waitKey(0)
     cv2.destroyAllWindows()
+

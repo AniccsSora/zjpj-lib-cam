@@ -1,0 +1,28 @@
+- number_of_tables: 2
+  seats_color:
+  - - &id001 !!python/tuple
+      - 0
+      - 255
+      - 0
+    - *id001
+    - *id001
+    - *id001
+    - &id002 !!python/tuple
+      - 255
+      - 0
+      - 0
+    - *id001
+    - *id001
+    - *id001
+  - - *id001
+    - *id001
+    - *id001
+    - *id002
+    - *id002
+    - *id001
+    - *id002
+    - *id001
+  table_layout: !!python/tuple
+  - 2
+  - 4
+  tag_name: scene_1
