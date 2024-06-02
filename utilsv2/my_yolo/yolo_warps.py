@@ -99,39 +99,70 @@ def main1():
     #  79: 'toothbrush'}
 
     # Run batched inference on a list of images
-    image = cv2.imread(r"./images/nobody_lib.jpg")
+    image = cv2.imread(r"./images/lib.jpg")
+    #image = cv2.imread(r"./images/nobody_lib.jpg")
     image2 = cv2.imread(r"./images/bus.jpg")
     images = [image, image2]
     results = model(images)  # return a list of Results objects
 
     # Process results list
-    for idx, result in enumerate(results):
-        annotator = Annotator(images[idx])
-        boxes = result.boxes  # Boxes object for bbox outputs
-        labels = result.boxes.cls.detach().cpu()  # id
-        labels_name = [model.names.get(_.item()) for _ in labels]  #  實際名稱
-        conf = boxes.conf.detach().cpu()
-        boxes.shape  # 原圖 size
-        boxes.xywh
-        boxes.xywhn
-        boxes.xyxy
-        boxes.xyxyn
-        print(labels_name)
+    if 0:
+        pass
+        # for idx, result in enumerate(results):
+        #     annotator = Annotator(images[idx])
+        #     boxes = result.boxes  # Boxes object for bbox outputs
+        #     labels = result.boxes.cls.detach().cpu()  # id
+        #     labels_name = [model.names.get(_.item()) for _ in labels]  #  實際名稱
+        #     conf = boxes.conf.detach().cpu()
+        #     boxes.shape  # 原圖 size
+        #     boxes.xywh
+        #     boxes.xywhn
+        #     boxes.xyxy
+        #     boxes.xyxyn
+        #     print(labels_name)
+        #
+        #     # draw bbox
+        #     for box in boxes:
+        #         b = box.xyxy[0]
+        #         c = box.cls
+        #         conf = box.conf
+        #         annotator.box_label(b, f"{model.names[int(c)]}_{int(conf.item()*100)}")
+        #     img = annotator.result()
+        #     cv2.imshow(f'YOLO V8 Detection_{idx}', resize_max_res(img))
+        #     cv2.imwrite(f"./images/YOLO_V8_Detection_8887_{idx}.jpg", img)
+    else:
+        for idx, result in enumerate(results):
+            annotator = Annotator(images[idx])
+            boxes = result.boxes  # Boxes object for bbox outputs
+            labels = result.boxes.cls.detach().cpu()  # id
+            labels_name = [model.names.get(_.item()) for _ in labels]  # 實際名稱
+            conf = boxes.conf.detach().cpu()
+            boxes.shape  # 原圖 size
+            boxes.xywh
+            boxes.xywhn
+            boxes.xyxy
+            boxes.xyxyn
+            print(labels_name)
 
-        # draw bbox
-        for box in boxes:
-            b = box.xyxy[0]
-            c = box.cls
-            conf = box.conf
-            annotator.box_label(b, f"{model.names[int(c)]}_{int(conf.item()*100)}")
-        img = annotator.result()
-        cv2.imshow(f'YOLO V8 Detection_{idx}', resize_max_res(img))
+            # draw bbox
+            for box in boxes:
+                b = box.xyxy[0]
+                c = box.cls
+                conf = box.conf
+                annotator.box_label(b, f"{model.names[int(c)]}_{int(conf.item() * 100)}")
+
+                # Draw red bbox
+                cv2.rectangle(annotator.result(), (int(b[0]), int(b[1])), (int(b[2]), int(b[3])), (0, 0, 255), 2)
+
+            img = annotator.result()
+            cv2.imshow(f'YOLO V8 Detection_{idx}', resize_max_res(img))
+            cv2.imwrite(f"./images/YOLO_V8_Detection_8887_{idx}.jpg", img)
     cv2.waitKey(0)
 
 
 def main2(debug=False):
-    image = cv2.imread(r"./utilsv2/my_yolo/images/nobody_lib.jpg")
-    image2 = cv2.imread(r"./utilsv2/my_yolo/images/bus.jpg")
+    image = cv2.imread(r"./images/nobody_lib.jpg")
+    image2 = cv2.imread(r"./images/bus.jpg")
     images = [image, image2]
 
     objects_list, object_confs = get_yolo_result_by_lable_name('dining table', images)
@@ -155,4 +186,5 @@ def main2(debug=False):
 
 
 if __name__ == "__main__":
-    main2(True)
+    #main2(True)
+    main1()

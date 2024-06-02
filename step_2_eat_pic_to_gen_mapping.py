@@ -14,6 +14,7 @@ import glob
 from typing import List, Tuple
 import time
 from web_fetch_DONT_UPLOAD_GITHUB import lib_camera_generator
+from web_fetch_DONT_UPLOAD_GITHUB import mkv_frame_generator, mkv_frame_generator_sec
 from utilsv2.state_machine.StateMachine import TB_StateMachine
 from utilsv2.state_machine.StateMachine import State as TB_State
 from utilsv2.my_queue.qqueue import Queue as My_Queue
@@ -716,6 +717,39 @@ class Secne_Table_chair:
     command:
         python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --camara --camara_name="2F閱覽區(北側)"
     
+    ~~~ 使用 local file ~~~
+    #
+    ## 路徑在這: `.\datacase\experiment4paper`
+    #
+    command:
+        #1716166626497_25833, 這是 north 北側，所以用 case 1 內的 去預設定檔案
+    
+        # A_2_B case 1:
+            python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/A_2_B/1716166626497_25833.mkv" --output_save_path="./datacase/experiment4paper/A_2_B/1716166626497_25833"
+            python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/A_2_B/1716176433698_67499.mkv" --output_save_path="./datacase/experiment4paper/A_2_B/1716176433698_67499"
+            python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/A_2_B/1716178963497_66001.mkv" --output_save_path="./datacase/experiment4paper/A_2_B/1716178963497_66001"
+        
+        # A_2_C case:
+            python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/A_2_C/1716166243998_45733.mkv" --output_save_path="./datacase/experiment4paper/A_2_C/1716166243998_45733"
+            python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/A_2_C/1716189403797_67499.mkv" --output_save_path="./datacase/experiment4paper/A_2_C/1716189403797_67499"
+        
+        # B_2_A case:
+            python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/B_2_A/1716168757297_45600.mkv" --output_save_path="./datacase/experiment4paper/B_2_A/1716168757297_45600"
+            python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/B_2_A/1716180647496_72001.mkv" --output_save_path="./datacase/experiment4paper/B_2_A/1716180647496_72001"
+            
+        # B_2_C case:
+            python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/B_2_C/1716180957997_66433.mkv" --output_save_path="./datacase/experiment4paper/B_2_C/1716180957997_66433"
+            python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/B_2_C/1716186104299_29833.mkv" --output_save_path="./datacase/experiment4paper/B_2_C/1716186104299_29833"
+        
+        # C_2_A case:
+            python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/C_2_A/1716187755797_74999.mkv" --output_save_path="./datacase/experiment4paper/C_2_A/1716187755797_74999"
+            python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/C_2_A/1716193517098_41199.mkv" --output_save_path="./datacase/experiment4paper/C_2_A/1716193517098_41199"
+        
+        # C_2_B case:            
+            python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/C_2_B/1716182290998_55032.mkv" --output_save_path="./datacase/experiment4paper/C_2_B/1716182290998_55032"
+            python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/C_2_B/1716186242297_64900.mkv" --output_save_path="./datacase/experiment4paper/C_2_B/1716186242297_64900"
+
+
 """
 
 if __name__ == "__main__":
@@ -742,6 +776,12 @@ if __name__ == "__main__":
                                  '2F閱覽區(西南側)','B1F閱覽區(北側)',
                                  'B1F閱覽區(南側)','B1F閱覽區(西側)']
                         )
+    #
+    parser.add_argument("--local_video", action="store_true", help="Use local video.")
+    parser.add_argument("--local_video_path", default="experiment4paper", type=str, help="local video path.")
+    #
+    parser.add_argument("--output_save_path", type=str, help="if have save path, than will save output to target path.")
+    #
     parser.add_argument("--debug_mode", action="store_true", help="debug mode")
     # parser.add_argument("--mode", choices=['table', 'polygon', 'chair'], type=str, help="choose mode")
     # 解析命令行參數
@@ -782,10 +822,22 @@ if __name__ == "__main__":
     if args.camara:
         # use generator
         _fecth_method = lib_camera_generator(args.camara_name, sleep_t=0.2)
+    elif args.local_video:
+        #_fecth_method = mkv_frame_generator(args.local_video_path)
+        _fecth_method = mkv_frame_generator_sec(args.local_video_path, interval_sec=1)
     else:
         # just usr list of str
         _fecth_method = [_.__str__() for _ in image_root.glob("*.*")]
     assert _fecth_method is not None
+
+
+    if args_G.output_save_path:
+        # save path
+        detected_output_save_path = Path(args_G.output_save_path)
+        # create folder
+        detected_output_save_path.mkdir(parents=True, exist_ok=True)
+        #
+        _for_saveing_counter = 1
 
     for _frame in _fecth_method:
         test_frame = None
@@ -1005,6 +1057,12 @@ if __name__ == "__main__":
                 #  A table iterate complete... go to next sit ~
             # all table done show it
             cv2.imshow("field_output_frame2", resize_image_with_max_resolution(field_output_frame2, 800))
+
+            #
+            if args_G.output_save_path:
+                # save path
+                cv2.imwrite(str(detected_output_save_path.joinpath(f"{_for_saveing_counter:0>5}.jpg")), field_output_frame2)
+                _for_saveing_counter += 1
         # ===================================================================
         # use_field_binding_list_rander === END ===
         cv2.waitKey(800)
