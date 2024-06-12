@@ -360,12 +360,14 @@ def divided_square_and_cals_slice_linesPair(square:np.ndarray, number:int):
         ))
     return res
 
-
-def calc_parallelogram_location_points(parallelogram:np.ndarray, sit_number:int, assert_check = True)->np.ndarray:
+# TODO: 修改讓 桌子 椅子 比例 可以調整。...
+def calc_parallelogram_location_points(parallelogram: np.ndarray, sit_number: int, assert_check=True,
+                                       seat_rate=1) -> np.ndarray:
     """
     回傳，所有棋盤方格 "點位"(包括座位區，定位點，桌子(角落點, 棋盤點))
     :param parallelogram:
     :param sit_number: 整個桌面要有幾個座位
+    : seat_rate : 希望椅子距離桌邊的長度為桌子的幾倍? default :1
     :return: {"sit_points": [np.ndarray ...],
               "table_points": [np.ndarray ...]
             }
@@ -397,24 +399,34 @@ def calc_parallelogram_location_points(parallelogram:np.ndarray, sit_number:int,
 
     # 垂直位置一個座位的方向向量
     y_sit_unit_vector = y_vector.astype(np.float64) / 2
+    # TODO: wait to valid..., if sit need more rate...
+
+    seat_over_table_rate_vector = y_sit_unit_vector * 1  # 椅子:桌子， > 1 表示椅子比桌子長
+    if seat_rate != 1:
+        seat_over_table_rate_vector = y_sit_unit_vector * seat_rate
+        pass  # 桌子短邊的 (1/2)   * 椅子比例 (預設: 1)
 
     # 檢測 單位向量 位移 數次後，可以走到 另一個桌子角落。
     # 左上原點 -> 右上角落
     lt = parallelogram[0]
     rt = parallelogram[1]
-    _x_delta = x_sit_unit_vector * (sit_number//2)
+    _x_delta = x_sit_unit_vector * (sit_number // 2)  # 桌子的長邊，長度
     if assert_check:
         assert np.isclose(np.linalg.norm(lt + _x_delta - rt), 0), \
-            "左上四邊形原點:{}，加上 x 方向向量，走 {} 步，無法到達右上角落:{}".\
-            format(lt, sit_number//2, rt)
+            "左上四邊形原點:{}，加上 x 方向向量，走 {} 步，無法到達右上角落:{}". \
+                format(lt, sit_number // 2, rt)
     # 左上原點 -> 左下角落
     # lt = parallelogram[0]
     lb = parallelogram[3]
-    _y_delta = y_sit_unit_vector * 2   # 垂直永遠是 2 個單位，因為只切一刀
+    # old:
+    _y_delta = y_sit_unit_vector * 2  # 垂直永遠是 2 個單位，因為只切一刀
+    # new: 因應 seat 的長度要可以是桌邊的 n 倍，不可以把 桌子的短邊 == 椅子距離桌邊距離
+    # 但這個 _y_delta 的 是拿來表達 table 的短邊。 所以沒差
+
     if assert_check:
         assert np.isclose(np.linalg.norm(lt + _y_delta - lb), 0), \
-            "左上四邊形原點:{}，加上 y 方向向量，走 {} 步，無法到達左下角落:{}".\
-            format(lb, 2, lb)
+            "左上四邊形原點:{}，加上 y 方向向量，走 {} 步，無法到達左下角落:{}". \
+                format(lb, 2, lb)
 
     # build return dataform
     result_dict = {
@@ -422,30 +434,40 @@ def calc_parallelogram_location_points(parallelogram:np.ndarray, sit_number:int,
         'table_points': [],
         'x_unit_vector': x_sit_unit_vector,
         'y_unit_vector': y_sit_unit_vector,
+        'seat_over_table_rate_vector': seat_over_table_rate_vector,
         'sit_group_points': [],  # 每個 '橫排'or'列' 的座位點, 基本上座位就是兩排
         'table_group_points': [],  # 每個 '橫排'or'列' 的桌子點, 基本上桌子就是三排
     }
 
     # 左上的座位點，位移
-    sit_lf = lt - y_sit_unit_vector
+    # old:
+    # sit_lf = lt - y_sit_unit_vector
+    # new:
+    sit_lf = lt - seat_over_table_rate_vector  # 桌子左上角點  -  椅子向量
     _sit_group_points_tmp = []
-    for i in range((sit_number//2)+1):
-        result_dict['sit_points'].append(sit_lf + (x_sit_unit_vector*i))
-        _sit_group_points_tmp.append(sit_lf + (x_sit_unit_vector*i))
+    for i in range((sit_number // 2) + 1):
+        result_dict['sit_points'].append(sit_lf + (x_sit_unit_vector * i))
+        _sit_group_points_tmp.append(sit_lf + (x_sit_unit_vector * i))
     result_dict['sit_group_points'].append(_sit_group_points_tmp)
-    # 左上方座位點位移 N 的位置後會抵達，右上角落- y_sit_unit_vector 位置
+    # 左上方座位點位移 N 的位置後會抵達，右上角落- seat_over_table_rate_vector 位置
     if assert_check:
-        assert np.isclose(np.linalg.norm(result_dict['sit_points'][-1] + y_sit_unit_vector - rt), 0), \
-            "  左上方座位點位移 N 的位置後會抵達，右上角落- y_sit_unit_vector 位置\n" \
+        assert np.isclose(np.linalg.norm(result_dict['sit_points'][-1] + seat_over_table_rate_vector - rt), 0), \
+            "  左上方座位點位移 N 的位置後會抵達，右上角落- seat_over_table_rate_vector 位置\n" \
             "  椅子右上方 = result_dict['sit_points'][-1]:{}\n" \
             "  桌子右上角落 = rt:{}\n" \
-            "  y 單位向量(1分隔向量)\n".format(result_dict['sit_points'][-1], rt, y_sit_unit_vector)
+            "  y 單位向量(椅距桌 向量)\n".format(result_dict['sit_points'][-1], rt, seat_over_table_rate_vector)
     # 上排驗證完畢，直接走4個 y 位移量即可抵達下排座位
-    bottom_sits = np.array(result_dict['sit_points']) + (y_sit_unit_vector * 4)
+    # old: 等比 X
+    # bottom_sits = np.array(result_dict['sit_points']) + (y_sit_unit_vector * 4)
+    # new:
+    # 椅子: seat_over_table_rate_vector
+    # 桌子: y_sit_unit_vector
+    bottom_sits = np.array(result_dict['sit_points']) + (seat_over_table_rate_vector * 2) + (y_sit_unit_vector * 2)
+
     result_dict['sit_points'] += list(bottom_sits)
     result_dict['sit_group_points'].append(list(bottom_sits.copy()))
 
-    # 座位計算完畢，來整個桌子點
+    # 座位計算完畢，來整個桌子點，這邊應該都用都跟 (椅距桌 向量) 無關 :)
     _table_group_points_tmp = []
     for i in range((sit_number // 2) + 1):
         result_dict['table_points'].append(lt + (x_sit_unit_vector * i))
@@ -454,7 +476,7 @@ def calc_parallelogram_location_points(parallelogram:np.ndarray, sit_number:int,
     #
     # 下面兩排也算出來，整排位移 y_sit_unit_vector ，兩遍的點 + 近來
     _topper_table_points = np.array(result_dict['table_points'])
-    for i in range(1, 2+1):
+    for i in range(1, 2 + 1):
         _shift_table_points = _topper_table_points + (y_sit_unit_vector * i)
         result_dict['table_points'] += list(_shift_table_points)
         result_dict['table_group_points'].append(list(_shift_table_points.copy()))
@@ -463,7 +485,7 @@ def calc_parallelogram_location_points(parallelogram:np.ndarray, sit_number:int,
     if _debug:
         _debug_w, _debug_h = 800, 600  # # 建立一個 800, 600 空畫布
         _debug_parallelogram = np.zeros(parallelogram.shape, np.int32)
-        if parallelogram.dtype == np.float32 or\
+        if parallelogram.dtype == np.float32 or \
                 parallelogram.dtype == np.float64:
             _debug_parallelogram[:, 0] = parallelogram[:, 0] * _debug_w
             _debug_parallelogram[:, 1] = parallelogram[:, 1] * _debug_h
@@ -473,7 +495,8 @@ def calc_parallelogram_location_points(parallelogram:np.ndarray, sit_number:int,
         debug_image = np.zeros((_debug_h, _debug_w, 3), np.uint8)
         # 畫出四邊形
         for i in range(4):
-            cv2.line(debug_image, tuple(_debug_parallelogram[i]), tuple(_debug_parallelogram[(i+1)%4]), (0, 255, 0), 1)
+            cv2.line(debug_image, tuple(_debug_parallelogram[i]), tuple(_debug_parallelogram[(i + 1) % 4]), (0, 255, 0),
+                     1)
         # 畫出點位 [table_points]
         for i in range(len(result_dict['table_points'])):
             cv2.circle(debug_image, tuple(result_dict['table_points'][i].astype(np.int32)),
@@ -489,9 +512,9 @@ def calc_parallelogram_location_points(parallelogram:np.ndarray, sit_number:int,
         # debug section
     # ===================== debug section End=====================
     # 椅子
-    assert len(result_dict['sit_points']) == ((sit_number//2)+1) * 2
+    assert len(result_dict['sit_points']) == ((sit_number // 2) + 1) * 2
     # 桌子
-    assert len(result_dict['table_points']) == ((sit_number//2)+1) * 3
+    assert len(result_dict['table_points']) == ((sit_number // 2) + 1) * 3
     # 檢查計算完畢的點位數量是對的。
 
     # transform to np.ndarray
@@ -499,7 +522,6 @@ def calc_parallelogram_location_points(parallelogram:np.ndarray, sit_number:int,
     result_dict['table_points'] = np.array(result_dict['table_points'])
     result_dict['sit_group_points'] = np.array(result_dict['sit_group_points'])
     result_dict['table_group_points'] = np.array(result_dict['table_group_points'])
-
 
     return result_dict
 
@@ -593,8 +615,15 @@ def make_sit_table_binding_to_field_binding(loc_points: dict, field_debug_show=F
 
     for sit_group in loc_points['sit_group_points']:
         for table_group in loc_points['table_group_points']:
-            for _y_unit_v in [1*loc_points['y_unit_vector'], -1*loc_points['y_unit_vector']]:
+
+            # y_unit_vector -> seat_over_table_rate_vector
+            for _y_unit_v in [1.0*loc_points['seat_over_table_rate_vector'], -1.0*loc_points['seat_over_table_rate_vector']]:
                 if np.isclose(sit_group + _y_unit_v, table_group).all():
+                    _vector_direction = 87  # init status
+                    if _y_unit_v[1] > 0:  # base on axis y ( axis-2)
+                        _vector_direction = 1
+                    else:
+                        _vector_direction = -1
                     # 當整排的椅子， shift 上 or 下 一個 y-axis unit_vector 可以重和 桌子的時候
                     #
                     # 開始編織座位區域
@@ -647,8 +676,12 @@ def make_sit_table_binding_to_field_binding(loc_points: dict, field_debug_show=F
                         # 上面的假設是對的這邊就不需要檢查。
                         _table_1 = st_binding[idx][1]  # [當前][桌子]
                         _table_2 = st_binding[idx+1][1]  # [下一個][桌子]
-                        _table_3 = st_binding[idx+1][1] +  _y_unit_v # [下一個][桌子] + _y_unit_v
-                        _table_4 = st_binding[idx][1] + _y_unit_v  # [當前][桌子] + _y_unit_v
+
+                        # 不可以用  _y_unit_v: 這是 for seat & table 之間的
+                        #  loc_points['y_unit_vector'] 這是 for table  自己的
+                        #  叫用 loc_points['y_unit_vector'] 要另給正負號
+                        _table_3 = st_binding[idx+1][1] + (loc_points['y_unit_vector'] * _vector_direction) # [下一個][桌子] + _y_unit_v
+                        _table_4 = st_binding[idx][1] + (loc_points['y_unit_vector'] * _vector_direction) # [當前][桌子] + _y_unit_v
 
                         tmp_dict = New_my_dict()
                         tmp_dict['sit_field_region'] = np.array([sit_1, sit_2, table_3, table_4])
@@ -677,8 +710,11 @@ def make_sit_table_binding_to_field_binding(loc_points: dict, field_debug_show=F
                         # 繪製整個 binding 的區域
                         _whole_sit_1 = st_binding[idx][0]  # [當前][椅子]
                         _whole_sit_2 = st_binding[idx + 1][0]  # [下一個][椅子]
-                        _whole_table_3 = st_binding[idx + 1][0] + _y_unit_v * 2  # [下一個][椅子] + _y_unit_v
-                        _whole_table_4 = st_binding[idx][0] + _y_unit_v * 2  # [當前][椅子] + _y_unit_v
+
+                        # 不可以用  _y_unit_v * 2: 這是 for seat & table 之間的
+                        #  用 -> ( loc_points['y_unit_vector'] * _vector_direction + _y_unit_v )
+                        _whole_table_3 = st_binding[idx + 1][0] + ( _y_unit_v + (loc_points['y_unit_vector'] * _vector_direction) )  # [下一個][椅子] + _y_unit_v
+                        _whole_table_4 = st_binding[idx][0] + ( _y_unit_v + (loc_points['y_unit_vector'] * _vector_direction) )  # [當前][椅子] + _y_unit_v
 
                         tmp_dict['whole_sit_region'] = np.array([_whole_sit_1, _whole_sit_2, _whole_table_3, _whole_table_4])
                         # 畫出來
@@ -794,7 +830,7 @@ def calc_tramsform_matrix_result(points=np.ndarray, M=np.ndarray, verbose=False)
 
 
 def clac_sit_table_fields_dict(parallelogram_norm=None, real_imgae=None, sits_number=8,
-                               debug_mode=False):
+                               debug_mode=False, args=None):
     """
     計算傳入的 "正歸化平行四邊形座標" 回傳 切分後的 座位、桌子 的區塊。
     :param parallelogram_norm:  正規化平行四邊形座標
@@ -803,6 +839,9 @@ def clac_sit_table_fields_dict(parallelogram_norm=None, real_imgae=None, sits_nu
     :param debug_mode: 印出一堆中間步驟
     :return:
     """
+    seat_over_table_rate = 1.0
+    if args is not None:
+        seat_over_table_rate = args.seat_over_table_rate
     #
     #
     # 創建一個800x600的灰色底圖像
@@ -1158,7 +1197,8 @@ def clac_sit_table_fields_dict(parallelogram_norm=None, real_imgae=None, sits_nu
         __sp_mapping_para_norm = np.zeros(mapped_parallelogram_pixel.shape, dtype=np.float64)
         __sp_mapping_para_norm[:, 0] = mapped_parallelogram_pixel[:, 0] / output_size[0]
         __sp_mapping_para_norm[:, 1] = mapped_parallelogram_pixel[:, 1] / output_size[1]
-        _ = calc_parallelogram_location_points(__sp_mapping_para_norm, sits_number)
+        _ = calc_parallelogram_location_points(__sp_mapping_para_norm, sits_number,
+                                               seat_rate=seat_over_table_rate)
 
         # 確認，就算對 calc_parallelogram_location_points 使用標準化座標，他也可以計算正確。
         _sit_loc_points = np.array(_['sit_points']).copy()
@@ -1181,7 +1221,8 @@ def clac_sit_table_fields_dict(parallelogram_norm=None, real_imgae=None, sits_nu
     mapped_parallelogram_norm[:, 0] = mapped_parallelogram_pixel[:, 0] / output_size[0]
     mapped_parallelogram_norm[:, 1] = mapped_parallelogram_pixel[:, 1] / output_size[1]
     sit_and_table_loc_points_mapped_norm = calc_parallelogram_location_points(mapped_parallelogram_norm, sits_number,
-                                                                              assert_check=True)
+                                                                              assert_check=True,
+                                                                              seat_rate=seat_over_table_rate)
 
     # 把 sit_and_table_loc_points_mapped 上的點逆運算回 background 上
     sit_norm_mapped = sit_and_table_loc_points_mapped_norm["sit_points"]

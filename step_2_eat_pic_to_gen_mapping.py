@@ -211,7 +211,7 @@ class Secne_Table_chair:
         for i in range(len(self.table_points)):
             self.table_sit_binding_norm[i] = clac_sit_table_fields_dict(np.array(self.table_points[i]),
                                                                         debug_mode=self.debug_mode,  # !!! debug mode
-                                                                        )
+                                                                        args=self.args)  # seat_over_table_rate
         # load 椅子位置
         _ = case_root.joinpath(args.chair_pic)
         assert case_root.joinpath(args.chair_pic).exists()
@@ -728,7 +728,8 @@ class Secne_Table_chair:
             python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/A_2_B/1716166626497_25833.mkv" --output_save_path="./datacase/experiment4paper/A_2_B/1716166626497_25833"
             python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/A_2_B/1716176433698_67499.mkv" --output_save_path="./datacase/experiment4paper/A_2_B/1716176433698_67499"
             python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/A_2_B/1716178963497_66001.mkv" --output_save_path="./datacase/experiment4paper/A_2_B/1716178963497_66001"
-        
+            --
+            
         # A_2_C case:
             python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/A_2_C/1716166243998_45733.mkv" --output_save_path="./datacase/experiment4paper/A_2_C/1716166243998_45733"
             python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/A_2_C/1716189403797_67499.mkv" --output_save_path="./datacase/experiment4paper/A_2_C/1716189403797_67499"
@@ -760,6 +761,7 @@ if __name__ == "__main__":
     parser.add_argument("--polygon_pic", default="polygon.pic", type=str, help="polygon txt path")
     parser.add_argument("--table_pic", default="table_N.pic", type=str, help="polygon txt path")
     parser.add_argument("--chair_pic", default="table_N_chair.pic", type=str, help="polygon txt path")
+    parser.add_argument("--seat_over_table_rate", default=1.3, type=float, help="seat's side:table' side (side is shorter side).")
     parser.add_argument("--check_preAnchor", action="store_true", help="display predefine data.")
     parser.add_argument("--verbose", action="store_true", help="show debug message")
     parser.add_argument("--random_pick_test_image", action="store_true", help="random pick test image")
@@ -914,8 +916,8 @@ if __name__ == "__main__":
         DRAW_TABLE_FIELD = False
         DRAW_SIT_ONLY_FIELD = False
 
-        #
-        DRAW_STATE_MACHINE_TEXT_ON_SIT = True
+        # 繪製座位上的文字
+        DRAW_STATE_MACHINE_TEXT_ON_SIT = False
         #
         #
         if use_field_binding_list_rander:
