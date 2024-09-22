@@ -7,11 +7,14 @@
     - *id001
     - *id001
     - *id001
-    - &id002 !!python/tuple
+    - !!python/tuple
+      - 0
+      - 0
+      - 255
+    - !!python/tuple
       - 255
       - 0
       - 0
-    - *id002
     - *id001
     - *id001
   - - *id001

@@ -622,7 +622,8 @@ class Secne_Table_chair:
             self.scene_state_history = [ list() for _ in range(self.table_numbers())]
             for __table_id in range(self.table_numbers()):
                 def _new_queue():
-                    _queue_len = 5  # 狀態機 queue長度 (state machine len)
+                    # TODO:  QUEUE LEN ...
+                    _queue_len = 7  # 狀態機 queue長度 (state machine len)
                     _queue = My_Queue(_queue_len)
                     [_queue.enqueue(TB_State.UNDEFINE) for _ in range(_queue_len)]
                     return _queue
@@ -806,7 +807,7 @@ if __name__ == "__main__":
     parser.add_argument("--polygon_pic", default="polygon.pic", type=str, help="polygon txt path")
     parser.add_argument("--table_pic", default="table_N.pic", type=str, help="polygon txt path")
     parser.add_argument("--chair_pic", default="table_N_chair.pic", type=str, help="polygon txt path")
-    parser.add_argument("--seat_over_table_rate", default=1.4, type=float, help="seat's side:table' side (side is shorter side).")
+    parser.add_argument("--seat_over_table_rate", default=1.2, type=float, help="seat's side:table' side (side is shorter side).")
     parser.add_argument("--check_preAnchor", action="store_true", help="display predefine data.")
     parser.add_argument("--verbose", action="store_true", help="show debug message")
     parser.add_argument("--random_pick_test_image", action="store_true", help="random pick test image")
@@ -1039,6 +1040,12 @@ if __name__ == "__main__":
                     # ===================================================================
                     #3
                     the_truth_state = _a_sit_state_machine.get_truth_state(_a_stt_state_history)
+                    print("old ver output: ", the_truth_state)
+                    _continue_last_time_repeat = 3
+                    the_truth_state = _a_sit_state_machine.get_truth_state_v2(_continue_last_time_repeat,
+                                                                              _a_stt_state_history)
+                    print("new ver output: ", the_truth_state)
+                    print("===================================")
                     # New ---- 根據狀態機的真實狀態，決定要印出的文字
                     if the_truth_state == "OCCUPIED":
                         draw_norm_polygon_on_image(field_output_frame2, _w_bboxn, whole_sit_bbox_color_occupied,
@@ -1180,7 +1187,9 @@ if __name__ == "__main__":
             for _in_idx in range(len(val)):  ##  根據每個位置的狀態機 來決定顏色
                 a_seat_single_queue = _a_table_queue_history[_in_idx]
                 a_seat_single_st = _a_table_state_machines[_in_idx]
-                a_seat_truth_label = a_seat_single_st.get_truth_state(a_seat_single_queue)
+                #a_seat_truth_label = a_seat_single_st.get_truth_state(a_seat_single_queue)
+                a_seat_truth_label = a_seat_single_st.get_truth_state_v2(_continue_last_time_repeat,
+                                                                             a_seat_single_queue)
                 if a_seat_truth_label == "OCCUPIED":
                     _a_seat_color_empty_ready.append(_seat_red__)
                 elif a_seat_truth_label == "AVAILABLE":

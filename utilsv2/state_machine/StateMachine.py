@@ -33,6 +33,50 @@ class TB_StateMachine:
         self.state = State.VACANT
         return 0
 
+    def to_undefine(self):
+        self.state = State.UNDEFINE
+        return 0
+
+    def get_truth_state_v2(self, n, queue: Queue):
+        """
+        檢查 queue 中最後 n 個元素是否相同
+        :param n: 檢查的最後 n 個元素，連續 n 個元素都相同的話 回傳 該狀態。
+        :return: True 如果最後 n 個元素相同，False 否則
+        """
+        ll = queue._get_queue_lst().copy()
+
+        # 如果 queue 長度小於 n，無法進行判斷
+        if len(ll) < n:
+            # 如果列表為空
+            print(" [狀態判斷錯誤] list < n ({})。".format(n))
+            return -1
+        element_count = Counter(ll)
+        # 檢查最後 n 個元素是否相同
+        last_n_elements = ll[-n:]  # 取得最後 n 個元素
+        print("ALL :", ll)
+        print("last:", last_n_elements)
+
+        # ll[0].value  >> 1
+        # ll[0].name >> 'VACANT'
+
+        if len(set(last_n_elements)) == 1:  # 判斷集合長度是否為 1，表示元素相同)
+            return ll[-1].name  # 直接回傳 連續 n 個狀態相同的狀態
+        else:
+            # return 'VACANT'
+            # 移除 undefine
+            while (1):
+                try:
+                    ll.remove(State.UNDEFINE)
+                except ValueError:
+                    #  not in list Error raised.
+                    break
+            element_count = Counter(ll)
+            if len(element_count):
+                # most_common(1) return 最多的元素
+                most_cnt = element_count.most_common(1)[0][0]
+                return most_cnt.name
+            else:
+                return 'VACANT'
 
     def get_truth_state(self, queue: Queue):
         """
@@ -46,6 +90,7 @@ class TB_StateMachine:
             try:
                 ll.remove(State.UNDEFINE)
             except ValueError:
+                #  not in list Error raised.
                 break
         element_count = Counter(ll)
 
