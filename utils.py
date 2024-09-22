@@ -89,6 +89,9 @@ def shrink_polygon(pts, edge_thickness):
 
     return new_pts
 
+def calculate_bbox_center(normalization_bbox):
+    x1, y1, x2, y2 = normalization_bbox
+    return (x1 + x2) / 2, (y1 + y2) / 2
 
 def draw_norm_polygon_on_image(image: np.ndarray, polygon: np.ndarray, color, thickness, inward=True):
     polygon = polygon.copy()

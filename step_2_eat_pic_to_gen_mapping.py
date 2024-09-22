@@ -38,6 +38,7 @@ class Secne_Table_chair:
         self.state_machine_init = False
         self.state_history_init = False
         self._path_init(case_root)
+        self.yolo_debug_bboxes_class_p = []
         assert self.polygen_points is not None
         assert self.table_points is not None
         assert self.chair_points is not None
@@ -51,7 +52,10 @@ class Secne_Table_chair:
         self.model = YOLO(self.args.yolo_w_name)  # pretrained YOLOv8n model , yolov8l, yolov8x
         # v8 labels definition
         # person, handbag, cup, laptop, mouse, cell phone, book
-        self.used_v8_labels = [0, 26, 41, 63, 64, 67, 73]
+        # TODO: 根據使用的 model 記得修改
+        #self.used_v8_labels = [0, 26, 41, 63, 64, 67, 73] # normal
+        # self.used_v8_labels = [0,1,2,3,4,5,6,7,8,9]  # self training 拿一堆  class but 太難標記
+        self.used_v8_labels = [0, 1]  # 只有 Object:0, Person:1
         """
         self.v8_labels =
         {0: 'person', 1: 'bicycle', 2: 'car', 3: 'motorcycle', 4: 'airplane', 5: 'bus',
@@ -138,6 +142,8 @@ class Secne_Table_chair:
 
             # 這個是字典注意， key 應該是 bbox 的 index
             # labels = result.names  # get labels
+            # if 0 in result.boxes.cls.detach().cpu():
+            #     print("person in this frame")
 
             # cla [N, 1], 每個框框的類別
             labels = [int(_) for _ in result.boxes.cls.detach().cpu()]
@@ -145,6 +151,7 @@ class Secne_Table_chair:
             confs = result.boxes.conf.detach().cpu()
             # mask 用來過濾不要的與要的類別
             used_mask = np.isin(labels, self.used_v8_labels)
+
             for idx, box in enumerate(boxes):  # iterate boxes
                 # 這是 r 一個 box(xyxy)，不是只一個數字!!!
                 # 而且這是實際數字，不是正歸化結果
@@ -423,6 +430,8 @@ class Secne_Table_chair:
                 center_t_x = center_t_x - w*0.05
             cv2.putText(frame, f"table: {table_idx+1}", (int(center_t_x*w), int(center_t_y*h)), cv2.FONT_ITALIC,
                         2.0, (255, 0, 0), 2, cv2.LINE_AA)
+
+
     def yolo_watch(self, frame, imshow_window_name="sufu", debug_show=False, debug_resize=0):
         """
         用檢測某個畫面，並填充此 class 的資料
@@ -432,6 +441,7 @@ class Secne_Table_chair:
         :param debug_resize: 0: 不縮放原始大小,  >0: 高度縮放到指定大小
         :return:
         """
+        self.draw_yolo_box = True
         self.yolo_detect(frame, verbose=self.debug_mode)
 
         # 更新 binding list 訊息，經由 yolo_detect() 結果填充
@@ -458,12 +468,26 @@ class Secne_Table_chair:
                 continue
 
             if debug_show:
-                self.draw_rectangle_xyxy(frame, xyxyn[:2], xyxyn[2:], (0, 0, 255), 2)  # draw boxes on img
+                # draw boxes on img
+                self.draw_rectangle_xyxy(frame, xyxyn[:2], xyxyn[2:], (0, 0, 255), 2)
+            # elif self.draw_yolo_box:
+            #     # 繪製 yolo bbox!!!
+            #     self.draw_rectangle_xyxy(frame, xyxyn[:2], xyxyn[2:], (255, 0, 255), 4)
+
+
 
             if debug_show:
                 fontScale = 1.5  # 字體大小
                 self.draw_putText_xyxy(frame, f"{label_name} {p * 100:.0f}%", xyxyn, cv2.FONT_HERSHEY_COMPLEX,
                                        fontScale, (0, 0, 255), 2)
+            # elif self.draw_yolo_box:
+            #     fontScale = 1.5
+            #     self.draw_putText_xyxy(frame, f"{label_name} {p * 100:.0f}%", xyxyn, cv2.FONT_HERSHEY_COMPLEX,
+            #                            fontScale, (255, 0, 255), 4)
+
+            # 取得繪製的資訊以利後續 可以繪製在最上層 不會被 桌面的方格遮住。
+
+            self.yolo_debug_bboxes_class_p.append((xyxyn, label_name, p))
 
             #
             #  此 function 真正要做的是填充數據到 class
@@ -598,7 +622,7 @@ class Secne_Table_chair:
             self.scene_state_history = [ list() for _ in range(self.table_numbers())]
             for __table_id in range(self.table_numbers()):
                 def _new_queue():
-                    _queue_len = 5
+                    _queue_len = 5  # 狀態機 queue長度 (state machine len)
                     _queue = My_Queue(_queue_len)
                     [_queue.enqueue(TB_State.UNDEFINE) for _ in range(_queue_len)]
                     return _queue
@@ -685,12 +709,16 @@ class Secne_Table_chair:
     # 
     # 這是使用 爬下來的 data, case 1
     python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1"  --image_folder_name "2F_North"
+    # 1.3 倍版
+    python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1"  --seat_over_table_rate=1.3 --image_folder_name "2F_North" --output_save_path="./datacase/case1/output" --debug_mode
+    1716343016298_65998
     # 
     # web: 開另外一個 terminal 執行。
     # python ./flask_web_app.py
     
     # 這是使用 爬下來的 data, case 2
     python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case2"  --image_folder_name "B1F_south"
+    
     
     # 建議使用這個 command 先確認，預先繪製的區塊是正確的顯示在圖片上
     # 顯示預先定義的資料: 使用測試測資
@@ -717,9 +745,18 @@ class Secne_Table_chair:
     command:
         python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --camara --camara_name="2F閱覽區(北側)"
     
+    
+    
+    ################
+    pip install
+    ---
+    pip install opencv-python
+    pip install ultralytics
+    pip install flask
+    ################
     ~~~ 使用 local file ~~~
     #
-    ## 路徑在這: `.\datacase\experiment4paper`
+    ## 路徑在這: `.\\datacase\\experiment4paper`
     #
     command:
         #1716166626497_25833, 這是 north 北側，所以用 case 1 內的 去預設定檔案
@@ -729,6 +766,9 @@ class Secne_Table_chair:
             python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/A_2_B/1716176433698_67499.mkv" --output_save_path="./datacase/experiment4paper/A_2_B/1716176433698_67499"
             python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/A_2_B/1716178963497_66001.mkv" --output_save_path="./datacase/experiment4paper/A_2_B/1716178963497_66001"
             --
+            python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/A_2_B/1716176433698_67499.mkv" --output_save_path="./datacase/experiment4paper/A_2_B/1716176433698_67499"
+            python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/A_2_B/1716176433698_67499.mkv" --output_save_path="./datacase/experiment4paper/A_2_B/1716176433698_67499_debug" --debug_mode
+              
             
         # A_2_C case:
             python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/A_2_C/1716166243998_45733.mkv" --output_save_path="./datacase/experiment4paper/A_2_C/1716166243998_45733"
@@ -741,6 +781,7 @@ class Secne_Table_chair:
         # B_2_C case:
             python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/B_2_C/1716180957997_66433.mkv" --output_save_path="./datacase/experiment4paper/B_2_C/1716180957997_66433"
             python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/B_2_C/1716186104299_29833.mkv" --output_save_path="./datacase/experiment4paper/B_2_C/1716186104299_29833"
+            python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/B_2_C/1716180957997_66433.mkv" --output_save_path="./datacase/experiment4paper_debug/B_2_C/1716180957997_66433" --debug_mode
         
         # C_2_A case:
             python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/C_2_A/1716187755797_74999.mkv" --output_save_path="./datacase/experiment4paper/C_2_A/1716187755797_74999"
@@ -749,7 +790,11 @@ class Secne_Table_chair:
         # C_2_B case:            
             python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/C_2_B/1716182290998_55032.mkv" --output_save_path="./datacase/experiment4paper/C_2_B/1716182290998_55032"
             python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/C_2_B/1716186242297_64900.mkv" --output_save_path="./datacase/experiment4paper/C_2_B/1716186242297_64900"
-
+        
+        # 1.3 倍 測試
+        python step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case1" --local_video --local_video_path="./datacase/experiment4paper/A_2_B/1716166626497_25833.mkv" --seat_over_table_rate=1.3 --output_save_path="J:\temps/zjpj_output/datacase/experiment4paper_1_3/A_2_B/1716166626497_25833"
+        
+        
 
 """
 
@@ -761,12 +806,13 @@ if __name__ == "__main__":
     parser.add_argument("--polygon_pic", default="polygon.pic", type=str, help="polygon txt path")
     parser.add_argument("--table_pic", default="table_N.pic", type=str, help="polygon txt path")
     parser.add_argument("--chair_pic", default="table_N_chair.pic", type=str, help="polygon txt path")
-    parser.add_argument("--seat_over_table_rate", default=1.3, type=float, help="seat's side:table' side (side is shorter side).")
+    parser.add_argument("--seat_over_table_rate", default=1.4, type=float, help="seat's side:table' side (side is shorter side).")
     parser.add_argument("--check_preAnchor", action="store_true", help="display predefine data.")
     parser.add_argument("--verbose", action="store_true", help="show debug message")
     parser.add_argument("--random_pick_test_image", action="store_true", help="random pick test image")
     parser.add_argument("--detect_all_image", action="store_true", help="detect all image in {image_folder_name}")
-    parser.add_argument("--yolo_w_name", default="yolov8x.pt", type=str, help="Used yolo weight fileaname.",
+    #parser.add_argument("--yolo_w_name", default="yolov8x.pt", type=str, help="Used yolo weight fileaname.",
+    parser.add_argument("--yolo_w_name", default="./customer_training_pt/best_xpt_01.pt", type=str, help="Used yolo weight fileaname.",
                         choices=[
                             'yolov8n.pt', 'yolov8s.pt', 'yolov8m.pt', 'yolov8l.pt', 'yolov8x.pt',
                         ]
@@ -866,8 +912,6 @@ if __name__ == "__main__":
         # 檢測此 frame 並填充此 class 的資料
         scene_1.yolo_watch(test_frame, debug_show=args_G.debug_mode, debug_resize=800)  # dddddddddddddddd
 
-
-
         #
         # print("debug chair_person_binding_list:")
         # print("\t", scene_1.chair_person_binding_list)
@@ -877,6 +921,7 @@ if __name__ == "__main__":
         # {0: [0, 0, 0, 0, 0, 0, 0, 0], 1: [0, 0, 0, 0, 0, 0, 0]}  <-- 初始範例
 
         #
+
         use_old_method_rander = False
         if use_old_method_rander:
             #
@@ -970,8 +1015,11 @@ if __name__ == "__main__":
                         #*******************
                         # ================== 處理 state machine ==================
                         # 有人
-                        if 'person' in a_sit["in_sit_field_region_Objects"]:
+                        #print("debug: ", a_sit["in_sit_field_region_Objects"])
+                        #if 'person' in a_sit["in_sit_field_region_Objects"]:
+                        if 'person' in [str(_).lower() for _ in a_sit["in_sit_field_region_Objects"]]:
                             # move state to Occupied(有佔用) 狀態
+
                             _a_sit_state_machine.to_occupied()
                             _a_stt_state_history.enqueue(TB_State.OCCUPIED)
                         else:  # 非人物品占用
@@ -1001,7 +1049,6 @@ if __name__ == "__main__":
                     elif the_truth_state == "VACANT":
                         draw_norm_polygon_on_image(field_output_frame2, _w_bboxn, whole_sit_bbox_color_idle,
                                                    whole_thickness)
-
                     #
                     if DRAW_STATE_MACHINE_TEXT_ON_SIT:
                         # 印出 state_list
@@ -1057,6 +1104,32 @@ if __name__ == "__main__":
                                                        sit_thickness)
                     #  A sit iterate complete... go to next sit ~
                 #  A table iterate complete... go to next sit ~
+            # ===============================================================
+            # 繪製 self.yolo_debug_bboxes_class_p 在準備輸出的 圖片上
+            for _xyxyn, _label_name, _p  in scene_1.yolo_debug_bboxes_class_p:
+
+                if _label_name == 'Person':
+                    # 計算 這個 bbox 的中間點  _xyxyn = [x1, y1, x2, y2]
+                    # 他們是正規化座標
+                    _w, _h = field_output_frame2.shape[1::-1]
+                    _center = calculate_bbox_center(_xyxyn)
+                    #計算好的絕對座標
+                    abs_point_x_y = (np.array([_w, _h]) * np.array(calculate_bbox_center(_xyxyn))).astype(int)
+                    # 繪製一個紅點在  abs_point_x_y 上面。
+                    cv2.circle(field_output_frame2, tuple(abs_point_x_y), 5, (0, 0, 255), -1)
+
+
+                # draw bbox
+                scene_1.draw_rectangle_xyxy(field_output_frame2, _xyxyn[:2], _xyxyn[2:], (0,0,225), 2)
+                _fontScale = 1.5  # 文字大小
+                # 繪製說明文字
+                scene_1.draw_putText_xyxy(field_output_frame2, f"{_label_name} {_p * 100:.0f}%", _xyxyn,
+                                          cv2.FONT_HERSHEY_COMPLEX,
+                                            _fontScale, (0, 0, 255), 2)
+            scene_1.yolo_debug_bboxes_class_p = []  # init~~
+            # ===============================================================
+
+
             # all table done show it
             cv2.imshow("field_output_frame2", resize_image_with_max_resolution(field_output_frame2, 800))
 
