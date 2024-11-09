@@ -210,6 +210,14 @@ class Secne_Table_chair:
         assert case_root.joinpath(args.polygon_pic).exists()
         self.polygen_points = load_polygon_to_data_struct(_)
 
+        # load 椅子位置
+        _ = case_root.joinpath(args.chair_pic)
+        assert case_root.joinpath(args.chair_pic).exists()
+        if develope_mode():
+            print("load_pic_dot_chair pickle content = ")
+            print(load_pic_dot_chair(_))
+        self.chair_points = load_pic_dot_chair(_)
+
         # load 桌子位置
         _ = case_root.joinpath(args.table_pic)
         assert case_root.joinpath(args.table_pic).exists()
@@ -218,14 +226,8 @@ class Secne_Table_chair:
         for i in range(len(self.table_points)):
             self.table_sit_binding_norm[i] = clac_sit_table_fields_dict(np.array(self.table_points[i]),
                                                                         debug_mode=self.debug_mode,  # !!! debug mode
+                                                                        sits_number=len(self.chair_points[i]), # dynamic get chair number
                                                                         args=self.args)  # seat_over_table_rate
-        # load 椅子位置
-        _ = case_root.joinpath(args.chair_pic)
-        assert case_root.joinpath(args.chair_pic).exists()
-        if develope_mode():
-            print("load_pic_dot_chair pickle content = ")
-            print(load_pic_dot_chair(_))
-        self.chair_points = load_pic_dot_chair(_)
 
     def table_numbers(self):
         return len(self.table_points)
