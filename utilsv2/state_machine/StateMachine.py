@@ -37,7 +37,7 @@ class TB_StateMachine:
         self.state = State.UNDEFINE
         return 0
 
-    def get_truth_state_v2(self, n, queue: Queue):
+    def get_truth_state_v2(self, n, queue: Queue, use_last=False):
         """
         檢查 queue 中最後 n 個元素是否相同
         :param n: 檢查的最後 n 個元素，連續 n 個元素都相同的話 回傳 該狀態。
@@ -52,15 +52,24 @@ class TB_StateMachine:
             return -1
         element_count = Counter(ll)
         # 檢查最後 n 個元素是否相同
-        last_n_elements = ll[-n:]  # 取得最後 n 個元素
+        if use_last:
+            last_n_elements = ll[-n:]  # 取得最後 n 個元素
+        else:
+            last_n_elements = ll[:n]  # 取得前面 n 個元素
         print("ALL :", ll)
-        print("last:", last_n_elements)
+        if use_last:
+            print(f"last {n}:", last_n_elements)
+        else:
+            print(f"first {n}:", last_n_elements)
 
         # ll[0].value  >> 1
         # ll[0].name >> 'VACANT'
 
         if len(set(last_n_elements)) == 1:  # 判斷集合長度是否為 1，表示元素相同)
-            return ll[-1].name  # 直接回傳 連續 n 個狀態相同的狀態
+            if use_last:
+                return ll[-1].name  # 直接回傳 連續 n 個狀態相同的狀態
+            else:
+                return ll[0].name
         else:
             # return 'VACANT'
             # 移除 undefine

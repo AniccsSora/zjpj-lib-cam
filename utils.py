@@ -582,6 +582,7 @@ def long_side_always_first(points:np.ndarray)->np.ndarray:
 
     assert_long_vector = np.linalg.norm(points[0] - points[1])
     assert_short_vector = np.linalg.norm(points[0] - points[-1])
+
     if assert_long_vector < assert_short_vector:
         # swap
         points[1], points[-1] = origin_sort_points[-1], origin_sort_points[1]
@@ -869,8 +870,9 @@ def clac_sit_table_fields_dict(parallelogram_norm=None, real_imgae=None, sits_nu
     #
     # side[0]-side[1]_always_most_long
     # 確認 [0]-[1] 邊總是最長，否則調換 [-1] 和 [1]
-    _long_side_first = 1
-    if _long_side_first:
+    _long_side_first = 0  # 1 會自動調整   Ctrl+F: 忽略長短邊問題
+    #if _long_side_first:
+    if args.auto_detect_table_long_side:
         parallelogram_norm = long_side_always_first(parallelogram_norm)
     # ==========================================
     parallelogram_pixel = normalize_2_pixel(parallelogram_norm, width, height).astype(np.int32)
@@ -906,7 +908,9 @@ def clac_sit_table_fields_dict(parallelogram_norm=None, real_imgae=None, sits_nu
     short_edge = parallelogram_pixel[3] - parallelogram_pixel[0]
     # 長邊與短邊的向量比
     long_edge_to_short_edge_ratio = np.linalg.norm(long_edge) / np.linalg.norm(short_edge)
-    assert long_edge_to_short_edge_ratio >= 1.0
+    # !!!! 忽略長短邊問題  :Ctrl+F  長短邊問題
+    if args.auto_detect_table_long_side:
+        assert long_edge_to_short_edge_ratio >= 1.0
 
     # 繪製平行四邊形
     cv2.polylines(background, [parallelogram_pixel], isClosed=True, color=(0, 0, 255),

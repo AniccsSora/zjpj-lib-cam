@@ -28,6 +28,19 @@ def develope_mode():
 
 args_G = None
 
+############################################################
+#  GGGG
+############################################################
+G_QUEUE_LENGTH = 15 # QUEUE 長度
+TRUE_QUEUE_STATUS_JUDGE_LEN = 3  # QUEUE 連續判斷長度，預設前 n 個用來判斷
+LOCAL_VIDEO_FREAME_FETCH_INTERVAL_SEC = 1  # 本地影片每次取幾秒
+PERSON_POINT_SIZE = 12  # 人的 hihglight point size. 原本是 5
+PERSON_HL_COLOR = (0, 0, 255)  # 紅色
+OBJECT_POINT_SIZE = 8   # 物件的 hihglight point size. 原本是 3
+OBJECT_HL_COLOR = (0, 255, 255)  # 黃色
+
+############################################################
+
 class Secne_Table_chair:
     def __init__(self, case_root, debug_mode=False):
         self.args = args_G
@@ -585,7 +598,6 @@ class Secne_Table_chair:
         #         # 覆蓋此桌子的 chair mask~
         #         self.person_in_chair_N[key] = tmp
 
-
     def __check_xyxy_in_current_yolo_results(self, xyxyn):
         """
         檢查哪個 self.current_yolo_results 出現再 xyxyn 中
@@ -625,7 +637,10 @@ class Secne_Table_chair:
             for __table_id in range(self.table_numbers()):
                 def _new_queue():
                     # TODO:  QUEUE LEN ...
-                    _queue_len = 7  # 狀態機 queue長度 (state machine len)
+                    # ___
+                    # 11/16
+                    # 狀態機 queue長度 (state machine len)  ####
+                    _queue_len = G_QUEUE_LENGTH
                     _queue = My_Queue(_queue_len)
                     [_queue.enqueue(TB_State.UNDEFINE) for _ in range(_queue_len)]
                     return _queue
@@ -703,6 +718,16 @@ class Secne_Table_chair:
                 # ============================
                 # 更新
                 self.table_sit_binding_norm[t_idx][sit_idx].update(_wait_to_updateIN_dict)
+"""
+Extra Datacase:
+
+python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case11" --verbose
+python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case12" --verbose
+python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case13" --verbose
+python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case14" --verbose
+python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case15" --verbose
+
+"""
 
 """
     讀取 3 個生成出的 pic 檔案，並將其轉換成我自己的類別。
@@ -814,6 +839,7 @@ if __name__ == "__main__":
     parser.add_argument("--verbose", action="store_true", help="show debug message")
     parser.add_argument("--random_pick_test_image", action="store_true", help="random pick test image")
     parser.add_argument("--detect_all_image", action="store_true", help="detect all image in {image_folder_name}")
+    parser.add_argument("--auto_detect_table_long_side", action="store_true", help="auto detect table long side")
     #parser.add_argument("--yolo_w_name", default="yolov8x.pt", type=str, help="Used yolo weight fileaname.",
     parser.add_argument("--yolo_w_name", default="./customer_training_pt/best_xpt_01.pt", type=str, help="Used yolo weight fileaname.",
                         choices=[
@@ -875,7 +901,7 @@ if __name__ == "__main__":
         _fecth_method = lib_camera_generator(args.camara_name, sleep_t=0.2)
     elif args.local_video:
         #_fecth_method = mkv_frame_generator(args.local_video_path)
-        _fecth_method = mkv_frame_generator_sec(args.local_video_path, interval_sec=1)
+        _fecth_method = mkv_frame_generator_sec(args.local_video_path, interval_sec=LOCAL_VIDEO_FREAME_FETCH_INTERVAL_SEC)
     else:
         # just usr list of str
         _fecth_method = [_.__str__() for _ in image_root.glob("*.*")]
@@ -904,7 +930,7 @@ if __name__ == "__main__":
         else:
             raise ValueError(f"unknow type??: {type(_frame)}")
         #
-        #
+        #\
         if ret_code is not None:
             if ret_code != 0:  # 0 mean OK!
                 print("camera read error! wait 5 sec to continue...")
@@ -1043,7 +1069,7 @@ if __name__ == "__main__":
                     #3
                     the_truth_state = _a_sit_state_machine.get_truth_state(_a_stt_state_history)
                     print("old ver output: ", the_truth_state)
-                    _continue_last_time_repeat = 3
+                    _continue_last_time_repeat = TRUE_QUEUE_STATUS_JUDGE_LEN
                     the_truth_state = _a_sit_state_machine.get_truth_state_v2(_continue_last_time_repeat,
                                                                               _a_stt_state_history)
                     print("new ver output: ", the_truth_state)
@@ -1118,23 +1144,30 @@ if __name__ == "__main__":
             for _xyxyn, _label_name, _p  in scene_1.yolo_debug_bboxes_class_p:
 
                 if _label_name == 'Person':
+                    _hl_color = PERSON_HL_COLOR
+                    _hl_point_size = PERSON_POINT_SIZE
+                else:
+                    _hl_color = OBJECT_HL_COLOR
+                    _hl_point_size = OBJECT_POINT_SIZE
+
+                if 1:  #_label_name == 'Person':
                     # 計算 這個 bbox 的中間點  _xyxyn = [x1, y1, x2, y2]
                     # 他們是正規化座標
                     _w, _h = field_output_frame2.shape[1::-1]
                     _center = calculate_bbox_center(_xyxyn)
                     #計算好的絕對座標
                     abs_point_x_y = (np.array([_w, _h]) * np.array(calculate_bbox_center(_xyxyn))).astype(int)
-                    # 繪製一個紅點在  abs_point_x_y 上面。
-                    cv2.circle(field_output_frame2, tuple(abs_point_x_y), 5, (0, 0, 255), -1)
+                    # 繪製一個HL在  abs_point_x_y 上面。
+                    cv2.circle(field_output_frame2, tuple(abs_point_x_y), _hl_point_size, _hl_color, -1)
 
 
                 # draw bbox
-                scene_1.draw_rectangle_xyxy(field_output_frame2, _xyxyn[:2], _xyxyn[2:], (0,0,225), 2)
+                scene_1.draw_rectangle_xyxy(field_output_frame2, _xyxyn[:2], _xyxyn[2:], _hl_color, 2)
                 _fontScale = 1.5  # 文字大小
                 # 繪製說明文字
                 scene_1.draw_putText_xyxy(field_output_frame2, f"{_label_name} {_p * 100:.0f}%", _xyxyn,
                                           cv2.FONT_HERSHEY_COMPLEX,
-                                            _fontScale, (0, 0, 255), 2)
+                                            _fontScale, _hl_color, 2)
             scene_1.yolo_debug_bboxes_class_p = []  # init~~
             # ===============================================================
 

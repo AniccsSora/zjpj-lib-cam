@@ -1,8 +1,20 @@
 from pathlib import Path
 import glob
 import json
+from datetime import datetime
+
+timestamp = datetime.now().strftime("%m_%d_%H_%M_%S")
 
 
+
+EXTRA="""\
+:: #  EXtra case
+python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case11" --output_save_path="./datacase/experiment4paper_{}/Extra_cases_case11" --verbose
+python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case12" --output_save_path="./datacase/experiment4paper_{}/Extra_cases_case12" --verbose
+python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case13" --output_save_path="./datacase/experiment4paper_{}/Extra_cases_case13" --verbose
+python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case14" --output_save_path="./datacase/experiment4paper_{}/Extra_cases_case14" --verbose
+python  step_2_eat_pic_to_gen_mapping.py --case_root "./datacase/case15" --output_save_path="./datacase/experiment4paper_{}/Extra_cases_case15" --verbose
+""".format(timestamp,timestamp,timestamp,timestamp,timestamp)
 
 if __name__ == "__main__":
     detect_folder_name = [
@@ -21,7 +33,13 @@ if __name__ == "__main__":
     __case_root = "./datacase/case1"
 
     # output case name, base on command_run_root
-    OUTPUT_RELATIVE_ROOT_PATH = "./"+root_path.joinpath("runs_output").relative_to(command_run_root).as_posix()
+    # like = `--output_save_path="./datacase/experiment4paper/runs_output/C_2_B/1716708313337_73509"`
+    #OUTPUT_RELATIVE_ROOT_PATH = "./"+root_path.joinpath("runs_output").relative_to(command_run_root).as_posix()
+    # ---
+    # new like = `--output_save_path="./datacase/experiment4paper_{timestamp}/runs_output/C_2_B/1716708313337_73509"`
+    #--output_save_path = "./datacase/experiment4paper_{timestamp}/runs_output/C_2_B/1716186242297_64900"
+    OUTPUT_RELATIVE_ROOT_PATH = "./datacase/experiment4paper_{}".format(timestamp)
+
     #
 
     CASE_ROOT_ = "./datacase/case1"
@@ -60,7 +78,11 @@ if __name__ == "__main__":
             for __ in _:
                 f.write(__+"\n")
             f.write("\n")
+
+        # write extra case
+        f.write(EXTRA)
     print("================================")
     for key, _ in dict_each_case_videos_number.items():
         print(f":: {key} : {_} videos")
     print("Please check \"test_command_generator_output.txt\"")
+
